@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* Prevent text size adjustment on mobile */
+    -webkit-text-size-adjust: 100%;
+    /* Remove tap highlight */
+    -webkit-tap-highlight-color: transparent;
+    /* Support for dynamic viewport height */
+    height: 100%;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 font-sans;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+    /* Support for dynamic viewport height */
+    min-height: 100%;
+    /* Improve font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Root element support for dynamic viewport */
+  #root {
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+
+  /* Custom scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+
+  /* Focus styles for better accessibility */
+  *:focus {
+    outline: none;
+  }
+
+  /* Safe area support */
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+@layer components {
+  /* Toss-style primary button */
+  .btn-primary {
+    @apply bg-primary-400 hover:bg-primary-500 active:bg-primary-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 min-h-[56px] focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2;
+  }
+
+  /* Toss-style secondary button */
+  .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-200 min-h-[56px] focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2;
+  }
+
+  /* Toss-style outline button */
+  .btn-outline {
+    @apply border-2 border-gray-300 hover:border-gray-400 active:bg-gray-100 text-gray-700 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-200 min-h-[56px] focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2;
+  }
+
+  /* Toss-style card */
+  .card {
+    @apply bg-white rounded-3xl shadow-sm border border-gray-200 p-6 transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-md hover:scale-[1.02] cursor-pointer;
+  }
+
+  /* Toss-style input field */
+  .input-field {
+    @apply w-full px-4 py-4 bg-gray-50 border-0 rounded-2xl text-base font-medium placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-primary-400 transition-all duration-200 min-h-[56px];
+  }
+
+  /* Mobile container */
+  .mobile-container {
+    @apply max-w-mobile mx-auto min-h-screen bg-white shadow-sm w-full;
+  }
+
+  /* Content padding for pages with bottom navigation */
+  .bottom-nav-padding {
+    @apply pb-[80px];
+  }
+
+  /* Header padding for pages with fixed header */
+  .header-padding {
+    @apply pt-[72px];
+  }
+
+  /* Touch-friendly minimum size */
+  .touch-target {
+    @apply min-h-[48px] min-w-[48px];
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply w-6 h-6 border-2 border-primary-400 border-t-transparent rounded-full animate-spin;
+  }
+
+  /* Toss-style section spacing */
+  .section-spacing {
+    @apply py-6;
+  }
+
+  /* Toss-style form group */
+  .form-group {
+    @apply space-y-3;
+  }
+
+  /* Toss-style divider */
+  .divider {
+    @apply border-t border-gray-200 my-6;
+  }
+}
+
+@layer utilities {
+  /* Dynamic viewport height utilities */
+  .h-dvh {
+    height: 100dvh;
+  }
+
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
+
+  .max-h-dvh {
+    max-height: 100dvh;
+  }
+
+  /* Safe area utilities */
+  .pt-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .pb-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pl-safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .pr-safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Touch manipulation */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Prevent text selection */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+}

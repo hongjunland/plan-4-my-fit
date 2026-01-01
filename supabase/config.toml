@@ -1,0 +1,55 @@
+# Supabase configuration file
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["https://your-domain.vercel.app"]
+jwt_expiry = 3600
+jwt_secret = "super-secret-jwt-token-with-at-least-32-characters-long"
+enable_signup = true
+enable_confirmations = false
+
+[auth.external.google]
+enabled = true
+client_id = "your-google-client-id"
+secret = "your-google-client-secret"
+redirect_uri = "http://localhost:54321/auth/v1/callback"
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+buckets = [
+  { name = "profile-images", public = true },
+  { name = "exercise-images", public = true }
+]
+
+[analytics]
+enabled = false
+
+[functions]
+enabled = true
+
+[edge_runtime]
+enabled = true
