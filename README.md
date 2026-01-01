@@ -2,7 +2,7 @@
 
 > AI가 개인 맞춤형 헬스 루틴을 생성해주는 모바일 웹앱
 
-[![CI/CD](https://github.com/your-username/plan-4-my-fit/workflows/CI/badge.svg)](https://github.com/your-username/plan-4-my-fit/actions)
+[![CI/CD](https://github.com/hongjunland/plan-4-my-fit/workflows/CI/badge.svg)](https://github.com/hongjunland/plan-4-my-fit/actions)
 [![Lighthouse](https://img.shields.io/badge/Lighthouse-90+-green.svg)](https://developers.google.com/web/tools/lighthouse)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -72,7 +72,7 @@ Plan4MyFit은 사용자의 체력 수준, 운동 목표, 신체 조건을 분석
 
 ### 1. 저장소 클론
 ```bash
-git clone https://github.com/your-username/plan-4-my-fit.git
+git clone https://github.com/hongjunland/plan-4-my-fit.git
 cd plan-4-my-fit
 ```
 
@@ -256,7 +256,7 @@ pnpm preview
 
 이슈가 있거나 새로운 기능을 제안하고 싶으시면:
 
-1. [GitHub Issues](https://github.com/your-username/plan-4-my-fit/issues)에서 기존 이슈를 확인해주세요
+1. [GitHub Issues](https://github.com/hongjunland/plan-4-my-fit/issues)에서 기존 이슈를 확인해주세요
 2. 새로운 이슈를 생성할 때는 템플릿을 사용해주세요
 3. 앱 내 피드백 버튼을 통해서도 의견을 보내실 수 있습니다
 
@@ -270,7 +270,7 @@ pnpm preview
 
 ## 👥 팀
 
-- **개발자**: [Your Name](https://github.com/your-username)
+- **개발자**: [Your Name](https://github.com/hongjunland)
 - **디자인**: 토스 디자인 시스템 기반
 - **AI**: OpenAI GPT-4
 
