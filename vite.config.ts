@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 import path from 'path'
 
 // https://vitejs.dev/config/
@@ -14,6 +15,22 @@ export default defineConfig(({ command, mode }) => {
   return {
   plugins: [
     react(),
+    // Sentry plugin for error monitoring and source maps
+    ...(isProduction && env.VITE_SENTRY_DSN ? [
+      sentryVitePlugin({
+        org: env.SENTRY_ORG,
+        project: env.SENTRY_PROJECT,
+        authToken: env.SENTRY_AUTH_TOKEN,
+        sourcemaps: {
+          assets: './dist/**',
+          ignore: ['node_modules/**'],
+        },
+        release: {
+          name: env.VITE_APP_VERSION || '1.0.0',
+          uploadLegacySourcemaps: false,
+        },
+      })
+    ] : []),
     // PWA 플러그인 - 프로덕션에서만 활성화
     ...(isProduction && env.VITE_ENABLE_PWA === 'true' ? [
       VitePWA({

@@ -11,11 +11,12 @@ test.describe('Component Integration Tests', () => {
     const buttonCount = await buttons.count();
     expect(buttonCount).toBeGreaterThan(0);
     
-    // Check button styling (Toss-style)
+    // Check button styling (Tailwind-based)
     const primaryButton = buttons.first();
     if (await primaryButton.isVisible()) {
       const buttonClass = await primaryButton.getAttribute('class');
-      expect(buttonClass).toContain('btn');
+      // Check for common Tailwind button classes
+      expect(buttonClass).toMatch(/bg-|text-|hover:|rounded/);
     }
   });
 

@@ -34,7 +34,7 @@ const ProgressStats: React.FC<ProgressStatsProps> = ({
           <ProgressBar 
             progress={weeklyCompletionRate} 
             className="h-3"
-            color="blue"
+            color="primary"
           />
         </div>
       </div>
@@ -50,7 +50,7 @@ const ProgressStats: React.FC<ProgressStatsProps> = ({
           <ProgressBar 
             progress={routineCompletionRate} 
             className="h-3"
-            color="green"
+            color="success"
           />
         </div>
       </div>

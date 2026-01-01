@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { logger } from '../utils/logger';
+import { trackEvent } from '../utils/analytics';
+import { setUserContext, clearUserContext } from '../utils/sentry';
 import { authService, type AuthUser } from '../services/auth';
 
 interface AuthState {
@@ -20,7 +22,7 @@ interface AuthState {
 let authStateChangeListener: any = null;
 let isInitialized = false; // 초기화 상태 추적
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
@@ -32,6 +34,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: !!user,
       isFirstLogin: user ? user.isFirstLogin : false,
     });
+    
+    // Update monitoring context
+    if (user) {
+      setUserContext({
+        id: user.id,
+        email: user.email,
+        username: user.name,
+      });
+    } else {
+      clearUserContext();
+    }
   },
 
   setLoading: (loading) => {
@@ -42,9 +55,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ isLoading: true });
       await authService.signInWithGoogle();
+      
+      // Track login event
+      trackEvent('user_login', { method: 'google' });
+      
       // 실제 사용자 정보는 onAuthStateChange에서 설정됨
     } catch (error) {
-      console.error('Google 로그인 실패:', error);
+      logger.error('Google 로그인 실패', error as Error);
       throw error;
     } finally {
       set({ isLoading: false });
@@ -54,6 +71,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     try {
       set({ isLoading: true });
+      
+      // Track logout event
+      trackEvent('user_logout', {});
+      
       await authService.signOut();
       
       // 초기화 상태 리셋
@@ -65,7 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isFirstLogin: false,
       });
     } catch (error) {
-      console.error('로그아웃 실패:', error);
+      logger.error('로그아웃 실패', error as Error);
       throw error;
     } finally {
       set({ isLoading: false });
@@ -147,14 +168,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
       }
 
-    } catch (error) {
-      console.error('❌ 인증 초기화 실패:', error);
-      set({
-        user: null,
-        isAuthenticated: false,
-        isFirstLogin: false,
-      });
-    } finally {
+      } catch (error) {
+        logger.error('인증 초기화 실패', error as Error);
+        set({
+          user: null,
+          isAuthenticated: false,
+          isFirstLogin: false,
+        });
+      } finally {
       set({ isLoading: false });
       logger.debug('인증 초기화 완료');
     }

@@ -18,7 +18,7 @@ interface RoutineState {
   clearError: () => void;
 }
 
-const useRoutineStore = create<RoutineState>((set, get) => ({
+const useRoutineStore = create<RoutineState>((set) => ({
   routines: [],
   activeRoutine: null,
   isLoading: false,
