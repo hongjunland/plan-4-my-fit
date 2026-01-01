@@ -1,0 +1,248 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Run type check
+        run: pnpm type-check
+        
+      - name: Run linting
+        run: pnpm lint
+        
+      - name: Run unit tests
+        run: pnpm test:run
+        
+      - name: Build application
+        run: pnpm build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_OPENAI_API_KEY: ${{ secrets.VITE_OPENAI_API_KEY }}
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps
+        
+      - name: Build application
+        run: pnpm build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_OPENAI_API_KEY: ${{ secrets.VITE_OPENAI_API_KEY }}
+          
+      - name: Run E2E tests
+        run: pnpm test:e2e
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_OPENAI_API_KEY: ${{ secrets.VITE_OPENAI_API_KEY }}
+          
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run security audit
+        run: |
+          npm audit --audit-level=high
+          
+      - name: Check for secrets in code
+        run: |
+          # Check for potential API keys or secrets
+          if grep -r "sk-[a-zA-Z0-9]\{20,\}" src/ --exclude-dir=node_modules; then
+            echo "❌ Potential API keys found in source code"
+            exit 1
+          fi
+          
+          if grep -r "https://[a-zA-Z0-9]\{8,\}\.supabase\.co" src/ --exclude-dir=node_modules; then
+            echo "❌ Potential Supabase URLs found in source code"
+            exit 1
+          fi
+          
+          echo "✅ No secrets detected in source code"
+
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Deploy to Vercel (Preview)
+        uses: amondnet/vercel-action@v25
+        id: vercel-preview
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          scope: ${{ secrets.VERCEL_ORG_ID }}
+          
+      - name: Wait for preview deployment
+        run: |
+          echo "Waiting for preview deployment to be ready..."
+          DEPLOYMENT_URL="${{ steps.vercel-preview.outputs.preview-url }}" pnpm deploy:wait
+        env:
+          DEPLOYMENT_URL: ${{ steps.vercel-preview.outputs.preview-url }}
+          
+      - name: Run preview health checks
+        run: |
+          echo "Running health checks on preview deployment..."
+          DEPLOYMENT_URL="${{ steps.vercel-preview.outputs.preview-url }}" pnpm deploy:monitor
+        env:
+          DEPLOYMENT_URL: ${{ steps.vercel-preview.outputs.preview-url }}
+          
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🚀 Preview Deployment Ready!
+              
+**Preview URL**: ${{ steps.vercel-preview.outputs.preview-url }}
+
+### Health Check Results
+- ✅ Deployment accessible
+- ✅ Health checks passed
+- ✅ Security headers configured
+
+You can test the changes at the preview URL above.`
+            });
+          
+  deploy-production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs: [test, e2e, security]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Deploy to Vercel (Production)
+        uses: amondnet/vercel-action@v25
+        id: vercel-deploy
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          scope: ${{ secrets.VERCEL_ORG_ID }}
+          
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to be ready..."
+          DEPLOYMENT_URL="${{ steps.vercel-deploy.outputs.preview-url }}" pnpm deploy:wait
+        env:
+          DEPLOYMENT_URL: ${{ steps.vercel-deploy.outputs.preview-url }}
+          
+      - name: Run health checks
+        run: |
+          echo "Running post-deployment health checks..."
+          DEPLOYMENT_URL="${{ steps.vercel-deploy.outputs.preview-url }}" pnpm deploy:monitor
+        env:
+          DEPLOYMENT_URL: ${{ steps.vercel-deploy.outputs.preview-url }}
+          
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "🚀 Production deployment successful!"
+          echo "URL: ${{ steps.vercel-deploy.outputs.preview-url }}"
+          
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed!"
+          echo "Check the logs above for details."
