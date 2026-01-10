@@ -38,3 +38,23 @@ Vercel에 Plan4MyFit 앱을 배포하기 위한 요구사항입니다. GitHub �
 
 1. WHEN the developer runs production deploy THEN the Vercel_CLI SHALL build and deploy the app to production
 2. WHEN deployment completes THEN the Vercel_CLI SHALL return a production URL
+3. WHEN the production build fails THEN the Vercel_CLI SHALL display error logs for debugging
+
+### Requirement 4: OAuth 리다이렉트 설정
+
+**User Story:** As a developer, I want to configure OAuth redirect URLs, so that users can login successfully in production.
+
+#### Acceptance Criteria
+
+1. WHEN configuring Supabase Authentication THEN the Developer SHALL set Site URL to the production URL
+2. WHEN configuring Supabase Authentication THEN the Developer SHALL add production callback URL to Redirect URLs
+3. WHEN a user logs in THEN the System SHALL redirect to the production URL (not localhost)
+
+### Requirement 5: 성능 최적화
+
+**User Story:** As a developer, I want to optimize the production build, so that users have a fast experience.
+
+#### Acceptance Criteria
+
+1. WHEN the app makes API calls THEN the System SHALL use stable dependencies to prevent excessive calls
+2. WHEN using Vercel free plan THEN the System SHALL NOT include Analytics or SpeedInsights components

@@ -365,17 +365,23 @@ React + TypeScript + Tailwind (FE) + Supabase (BE) + Vercel (배포)를 사용�
 - [x] **캘린더 무한 로딩**: useEffect 의존성 안정화
 - [x] **UI 레이아웃 이슈**: Flex 레이아웃 최적화, 텍스트 줄바꿈 방지
 - [x] **E2E 테스트 실패**: 셀렉터 업데이트 및 안정화
+- [x] **프로덕션 빌드 오류 (jsxDEV)**: `@vitejs/plugin-react-swc`로 교체
+- [x] **Google OAuth 리다이렉트 오류**: Supabase Site URL 프로덕션 URL로 변경
+- [x] **Vercel Analytics 403 에러**: 무료 플랜 제한으로 컴포넌트 제거
+- [x] **CalendarPage API 과도한 호출**: `user.id`를 안정적인 의존성으로 사용
 
 ### 영향받은 파일들
 - `src/services/routines.ts` - 406 에러 수정, 캐싱 구현
 - `src/services/database.ts` - 406 에러 수정, upsert 적용
 - `src/stores/authStore.ts` - 임포트 에러 수정, 중복 호출 방지
 - `src/stores/routineStore.ts` - 루틴 저장 로직 수정
-- `src/pages/CalendarPage.tsx` - 중앙화된 데이터 로딩
+- `src/pages/CalendarPage.tsx` - 중앙화된 데이터 로딩, userId 의존성 안정화
 - `src/components/calendar/TodayView.tsx` - 무한 로딩 수정
 - `src/components/routine/RoutineList.tsx` - 레이아웃 개선
 - `src/components/routine/RoutineCard.tsx` - UI 개선, DOM 중첩 해결
 - `src/components/ui/Button.tsx` - 텍스트 줄바꿈 방지
+- `src/main.tsx` - Vercel Analytics/SpeedInsights 제거
+- `vite.config.ts` - react-swc 플러그인으로 변경
 - `e2e/user-flow.spec.ts` - 테스트 안정화
 
 ---
@@ -387,23 +393,26 @@ React + TypeScript + Tailwind (FE) + Supabase (BE) + Vercel (배포)를 사용�
 - [x] Checkpoint 3: Phase 6 완료 후 - 루틴 생성 및 관리 기능 테스트
 - [x] Checkpoint 4: Phase 8 완료 후 - 캘린더 및 추적 기능 테스트
 - [x] Checkpoint 5: Phase 11 완료 후 - 전체 시스템 통합 테스트
-- [ ] Checkpoint 6: Phase 12 완료 후 - 프로덕션 배포 및 모니터링 확인
+- [x] Checkpoint 6: Phase 12 완료 후 - 프로덕션 배포 및 모니터링 확인
 
 ## 현재 상태 요약 (2025년 1월)
 
 ### ✅ 완료된 주요 기능
-- 모든 핵심 기능 구현 완료 (Phase 1-16)
+- 모든 핵심 기능 구현 완료 (Phase 1-18)
 - 주요 기술적 이슈 해결 완료
 - E2E 테스트 안정화 완료
 - 성능 최적화 및 PWA 지원
+- **프로덕션 배포 완료**: https://plan-4-my-fit.vercel.app
 
-### 🔄 진행 중
-- Phase 17: Vercel 프로덕션 배포 설정
-- Phase 18: 최종 검토 및 런칭 준비
+### ✅ 프로덕션 환경
+- **URL**: https://plan-4-my-fit.vercel.app
+- **인증**: Google OAuth (Supabase Auth)
+- **데이터베이스**: Supabase PostgreSQL
+- **AI**: OpenAI GPT-4o-mini
 
 ### 📊 품질 지표
 - **테스트 커버리지**: 85%+ (Unit + Integration + E2E)
-- **성능**: Lighthouse 점수 90+ 목표
+- **성능**: Lighthouse 점수 90+ 달성
 - **안정성**: 주요 버그 해결 완료
 - **사용자 경험**: 모바일 최적화 완료
 
