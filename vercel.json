@@ -54,7 +54,7 @@
   ],
   "rewrites": [
     {
-      "source": "/:path((?!api|assets|_next).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
