@@ -126,7 +126,7 @@ async function callEdgeFunction<T>(
  * Requirement 1.2: OAuth 인증 플로우 시작
  */
 export async function getAuthUrl(redirectUri?: string): Promise<string> {
-  const finalRedirectUri = redirectUri || `${window.location.origin}/calendar/callback`;
+  const finalRedirectUri = redirectUri || `${window.location.origin}/auth/google-calendar/callback`;
   
   logger.debug('Getting Google Calendar auth URL', { redirectUri: finalRedirectUri });
   
@@ -148,7 +148,7 @@ export async function handleCallback(
   code: string,
   redirectUri?: string
 ): Promise<CallbackResponse> {
-  const finalRedirectUri = redirectUri || `${window.location.origin}/calendar/callback`;
+  const finalRedirectUri = redirectUri || `${window.location.origin}/auth/google-calendar/callback`;
   
   logger.debug('Handling Google Calendar OAuth callback');
   
