@@ -1,6 +1,12 @@
 import { supabase } from './supabase';
 import { logger } from '../utils/logger';
 import type { Routine, RoutineSettings, Workout, Exercise } from '../types';
+import { 
+  getConnectionStatus, 
+  createEventsForRoutine, 
+  deleteEventsForRoutine,
+  syncRoutine as syncRoutineToCalendar
+} from './googleCalendar';
 
 // Exercise 타입을 re-export
 export type { Exercise } from '../types';
@@ -395,9 +401,17 @@ class RoutinesService {
 
   /**
    * 루틴 수정
+   * 활성화된 루틴 수정 시 구글 캘린더 이벤트도 업데이트
+   * Requirements: 3.1
    */
   async updateRoutine(routineId: string, request: UpdateRoutineRequest): Promise<RoutineWithDetails> {
     try {
+      // 먼저 루틴 정보 조회 (활성 상태 확인용)
+      const existingRoutine = await this.getRoutine(routineId);
+      if (!existingRoutine) {
+        throw new Error('루틴을 찾을 수 없습니다.');
+      }
+
       const updateData: any = {};
       if (request.name) updateData.name = request.name;
       if (request.settings) updateData.settings = request.settings as unknown as any;
@@ -417,6 +431,29 @@ class RoutinesService {
 
       const workouts = await this.getRoutineWorkouts(routine.id);
 
+      // 활성화된 루틴이 수정된 경우 캘린더 이벤트 동기화
+      if (existingRoutine.isActive) {
+        const calendarStatus = await getConnectionStatus();
+        
+        if (calendarStatus.isConnected && !calendarStatus.isTokenExpired) {
+          try {
+            // 기존 이벤트 삭제 후 새로 생성 (동기화)
+            const today = new Date().toISOString().split('T')[0];
+            await syncRoutineToCalendar(routineId, today);
+            logger.info('Synced calendar events for updated routine', { routineId });
+          } catch (syncError) {
+            // 캘린더 동기화 실패는 로깅만 하고 계속 진행
+            logger.warn('Failed to sync calendar events for routine', { 
+              routineId, 
+              error: syncError instanceof Error ? syncError.message : String(syncError) 
+            });
+          }
+        }
+      }
+
+      // 캐시 무효화
+      this.invalidateActiveRoutineCache(routine.user_id);
+
       return {
         id: routine.id,
         userId: routine.user_id,
@@ -435,9 +472,39 @@ class RoutinesService {
 
   /**
    * 루틴 활성화 (다른 모든 루틴 비활성화)
+   * 구글 캘린더 연동 시 이벤트 자동 생성
+   * Requirements: 2.1, 4.1
    */
   async activateRoutine(userId: string, routineId: string): Promise<void> {
     try {
+      // 기존 활성 루틴의 캘린더 이벤트 삭제 (구글 캘린더 연동된 경우)
+      const calendarStatus = await getConnectionStatus();
+      
+      if (calendarStatus.isConnected && !calendarStatus.isTokenExpired) {
+        // 기존 활성 루틴 조회
+        const { data: activeRoutines } = await supabase
+          .from('routines')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('is_active', true);
+        
+        // 기존 활성 루틴의 캘린더 이벤트 삭제
+        if (activeRoutines && activeRoutines.length > 0) {
+          for (const routine of activeRoutines) {
+            try {
+              await deleteEventsForRoutine(routine.id);
+              logger.debug('Deleted calendar events for deactivated routine', { routineId: routine.id });
+            } catch (error) {
+              // 캘린더 이벤트 삭제 실패는 로깅만 하고 계속 진행
+              logger.warn('Failed to delete calendar events for routine', { 
+                routineId: routine.id, 
+                error: error instanceof Error ? error.message : String(error) 
+              });
+            }
+          }
+        }
+      }
+
       // 트랜잭션으로 처리: 모든 루틴 비활성화 후 선택한 루틴 활성화
       const { error: deactivateError } = await supabase
         .from('routines')
@@ -464,11 +531,79 @@ class RoutinesService {
         throw activateError;
       }
 
+      // 구글 캘린더 연동된 경우 새 루틴의 이벤트 생성
+      if (calendarStatus.isConnected && !calendarStatus.isTokenExpired) {
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          await createEventsForRoutine({
+            routineId,
+            startDate: today,
+            timeZone: 'Asia/Seoul',
+            defaultStartTime: '09:00',
+            durationMinutes: 60,
+          });
+          logger.info('Created calendar events for activated routine', { routineId });
+        } catch (error) {
+          // 캘린더 이벤트 생성 실패는 로깅만 하고 계속 진행
+          // 루틴 활성화 자체는 성공으로 처리
+          logger.error('Failed to create calendar events for routine', 
+            error instanceof Error ? error : new Error(String(error))
+          );
+        }
+      }
+
       // 캐시 무효화
       this.invalidateActiveRoutineCache(userId);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('루틴 활성화 실패:', error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * 루틴 비활성화
+   * 구글 캘린더 연동 시 이벤트 자동 삭제
+   * Requirements: 4.1
+   */
+  async deactivateRoutine(userId: string, routineId: string): Promise<void> {
+    try {
+      // 구글 캘린더 연동된 경우 이벤트 삭제
+      const calendarStatus = await getConnectionStatus();
+      
+      if (calendarStatus.isConnected && !calendarStatus.isTokenExpired) {
+        try {
+          await deleteEventsForRoutine(routineId);
+          logger.info('Deleted calendar events for deactivated routine', { routineId });
+        } catch (error) {
+          // 캘린더 이벤트 삭제 실패는 로깅만 하고 계속 진행
+          logger.warn('Failed to delete calendar events for routine', { 
+            routineId, 
+            error: error instanceof Error ? error.message : String(error) 
+          });
+        }
+      }
+
+      // 루틴 비활성화
+      const { error } = await supabase
+        .from('routines')
+        .update({ is_active: false })
+        .eq('id', routineId)
+        .eq('user_id', userId);
+
+      if (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('루틴 비활성화 오류:', error);
+        }
+        throw error;
+      }
+
+      // 캐시 무효화
+      this.invalidateActiveRoutineCache(userId);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('루틴 비활성화 실패:', error);
       }
       throw error;
     }
@@ -504,9 +639,28 @@ class RoutinesService {
 
   /**
    * 루틴 삭제
+   * 구글 캘린더 연동 시 이벤트도 함께 삭제
+   * Requirements: 4.2
    */
   async deleteRoutine(routineId: string): Promise<void> {
     try {
+      // 구글 캘린더 연동된 경우 이벤트 먼저 삭제
+      const calendarStatus = await getConnectionStatus();
+      
+      if (calendarStatus.isConnected && !calendarStatus.isTokenExpired) {
+        try {
+          await deleteEventsForRoutine(routineId);
+          logger.info('Deleted calendar events for deleted routine', { routineId });
+        } catch (error) {
+          // 캘린더 이벤트 삭제 실패는 로깅만 하고 계속 진행
+          // 루틴 삭제는 진행되어야 함
+          logger.warn('Failed to delete calendar events for routine', { 
+            routineId, 
+            error: error instanceof Error ? error.message : String(error) 
+          });
+        }
+      }
+
       const { error } = await supabase
         .from('routines')
         .delete()

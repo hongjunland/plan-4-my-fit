@@ -37,12 +37,9 @@ const MyPage: React.FC = () => {
     {
       label: '캘린더 연동',
       icon: '📅',
-      onClick: () => {
-        // TODO: Implement calendar integration in future version
-        alert('캘린더 연동 기능은 향후 업데이트에서 제공될 예정입니다.');
-      },
+      onClick: () => navigate(ROUTES.CALENDAR_SETTINGS),
       description: '구글 캘린더와 운동 일정 동기화',
-      available: false
+      available: true
     },
     {
       label: '도움말',

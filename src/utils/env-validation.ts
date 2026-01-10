@@ -16,6 +16,10 @@ interface EnvConfig {
   VITE_APP_NAME: string;
   VITE_APP_VERSION: string;
   
+  // Google Calendar (optional - for calendar integration feature)
+  VITE_GOOGLE_CLIENT_ID?: string;
+  VITE_GOOGLE_CALENDAR_REDIRECT_URI?: string;
+  
   // Optional
   VITE_SENTRY_DSN?: string;
   VITE_GA_TRACKING_ID?: string;
@@ -95,6 +99,10 @@ class EnvironmentValidator {
       VITE_APP_URL: this.env.VITE_APP_URL,
       VITE_APP_NAME: this.env.VITE_APP_NAME,
       VITE_APP_VERSION: this.env.VITE_APP_VERSION,
+      // Google Calendar (optional)
+      VITE_GOOGLE_CLIENT_ID: this.env.VITE_GOOGLE_CLIENT_ID,
+      VITE_GOOGLE_CALENDAR_REDIRECT_URI: this.env.VITE_GOOGLE_CALENDAR_REDIRECT_URI,
+      // Other optional
       VITE_SENTRY_DSN: this.env.VITE_SENTRY_DSN,
       VITE_GA_TRACKING_ID: this.env.VITE_GA_TRACKING_ID,
       VITE_ENABLE_PWA: this.env.VITE_ENABLE_PWA,
@@ -147,6 +155,10 @@ class EnvironmentValidator {
       hasSupabaseUrl: !!this.env.VITE_SUPABASE_URL,
       hasSupabaseKey: !!this.env.VITE_SUPABASE_ANON_KEY,
       hasOpenAIKey: !!this.env.VITE_OPENAI_API_KEY,
+      // Google Calendar integration
+      hasGoogleClientId: !!this.env.VITE_GOOGLE_CLIENT_ID,
+      hasGoogleCalendarRedirectUri: !!this.env.VITE_GOOGLE_CALENDAR_REDIRECT_URI,
+      googleCalendarEnabled: !!this.env.VITE_GOOGLE_CLIENT_ID && !!this.env.VITE_GOOGLE_CALENDAR_REDIRECT_URI,
       appName: this.env.VITE_APP_NAME,
       appVersion: this.env.VITE_APP_VERSION,
       // Feature flags

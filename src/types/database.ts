@@ -278,6 +278,137 @@ export interface Database {
           }
         ]
       }
+      google_calendar_tokens: {
+        Row: {
+          id: string
+          user_id: string
+          access_token: string
+          refresh_token: string
+          token_expiry: string
+          google_email: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          access_token: string
+          refresh_token: string
+          token_expiry: string
+          google_email?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          access_token?: string
+          refresh_token?: string
+          token_expiry?: string
+          google_email?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      calendar_event_mappings: {
+        Row: {
+          id: string
+          user_id: string
+          routine_id: string
+          workout_id: string
+          google_event_id: string
+          event_date: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          routine_id: string
+          workout_id: string
+          google_event_id: string
+          event_date: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          routine_id?: string
+          workout_id?: string
+          google_event_id?: string
+          event_date?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_event_mappings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_event_mappings_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_event_mappings_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      calendar_sync_status: {
+        Row: {
+          id: string
+          user_id: string
+          last_sync_at: string | null
+          sync_status: 'idle' | 'syncing' | 'error'
+          error_message: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          last_sync_at?: string | null
+          sync_status?: 'idle' | 'syncing' | 'error'
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          last_sync_at?: string | null
+          sync_status?: 'idle' | 'syncing' | 'error'
+          error_message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_sync_status_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -19,6 +19,8 @@ export const ROUTES = {
   ROUTINES_EDIT: '/app/routines/:id/edit',
   ROUTINES_WORKOUT: '/app/routines/:id/workout/:day',
   CALENDAR: '/app/calendar',
+  CALENDAR_SETTINGS: '/app/calendar/settings',
+  GOOGLE_CALENDAR_CALLBACK: '/auth/google-calendar/callback',
   PROGRESS: '/app/progress',
 } as const;
 
@@ -44,4 +46,18 @@ export const APP_CONFIG = {
   MAX_WEIGHT: 300,
   MIN_WEEKLY_WORKOUTS: 1,
   MAX_WEEKLY_WORKOUTS: 7,
+} as const;
+
+// Google Calendar configuration
+export const GOOGLE_CALENDAR_CONFIG = {
+  SCOPES: ['https://www.googleapis.com/auth/calendar.events'],
+  API_BASE_URL: 'https://www.googleapis.com/calendar/v3',
+  AUTH_URL: 'https://accounts.google.com/o/oauth2/v2/auth',
+  TOKEN_URL: 'https://oauth2.googleapis.com/token',
+  REVOKE_URL: 'https://oauth2.googleapis.com/revoke',
+  // Default event settings
+  DEFAULT_EVENT_DURATION_MINUTES: 60,
+  DEFAULT_EVENT_COLOR_ID: '9', // Blue color in Google Calendar
+  // Reminder settings
+  DEFAULT_REMINDER_MINUTES: 30,
 } as const;

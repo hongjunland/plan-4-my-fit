@@ -8,4 +8,6 @@ export { default as RoutinesPage } from './RoutinesPage';
 export { default as RoutineNewPage } from './RoutineNewPage';
 export { default as RoutineEditPage } from './RoutineEditPage';
 export { default as CalendarPage } from './CalendarPage';
+export { default as CalendarSettingsPage } from './CalendarSettingsPage';
+export { default as GoogleCalendarCallbackPage } from './GoogleCalendarCallbackPage';
 export { default as ProgressPage } from './ProgressPage';

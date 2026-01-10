@@ -6,6 +6,9 @@ interface ImportMetaEnv {
   readonly VITE_OPENAI_API_KEY: string
   readonly VITE_APP_URL: string
   readonly VITE_APP_NAME: string
+  // Google Calendar API
+  readonly VITE_GOOGLE_CLIENT_ID: string
+  readonly VITE_GOOGLE_CALENDAR_REDIRECT_URI: string
 }
 
 interface ImportMeta {

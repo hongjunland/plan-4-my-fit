@@ -14,7 +14,7 @@ additional_redirect_urls = ["https://your-domain.vercel.app"]
 jwt_expiry = 3600
 jwt_secret = "super-secret-jwt-token-with-at-least-32-characters-long"
 enable_signup = true
-enable_confirmations = false
+enable_anonymous_sign_ins = false
 
 [auth.external.google]
 enabled = true
@@ -40,16 +40,17 @@ pop3_port = 54326
 [storage]
 enabled = true
 file_size_limit = "50MiB"
-buckets = [
-  { name = "profile-images", public = true },
-  { name = "exercise-images", public = true }
-]
+
+[storage.buckets.profile-images]
+public = true
+
+[storage.buckets.exercise-images]
+public = true
 
 [analytics]
 enabled = false
 
-[functions]
-enabled = true
+# Functions are configured per-function in supabase/functions/*/config.toml
 
 [edge_runtime]
-enabled = true
+policy = "oneshot"

@@ -4,6 +4,8 @@ export * from './routines';
 export * from './ai';
 export * from './supabase';
 export * from './database';
+export * from './googleCalendar';
 
 // Export specific services for easier access
 export { workoutLogService } from './database';
+export { googleCalendarService } from './googleCalendar';
