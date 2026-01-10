@@ -29,7 +29,6 @@ interface CalendarEvent {
   colorId?: string;
   reminders?: {
     useDefault: boolean;
-    overrides?: Array<{ method: string; minutes: number }>;
   };
 }
 
@@ -43,16 +42,6 @@ interface WorkoutData {
     reps: string;
     muscleGroup: string;
   }>;
-}
-
-interface RoutineData {
-  id: string;
-  name: string;
-  settings: {
-    durationWeeks: number;
-    workoutsPerWeek: number;
-  };
-  workouts: WorkoutData[];
 }
 
 interface CreateEventsRequest {
@@ -179,16 +168,14 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
 // ============================================================================
 
 /**
- * Converts workout data to Google Calendar event format
- * Includes: workout name (summary), exercise list (description), duration
+ * Converts workout data to Google Calendar all-day event format
+ * Includes: workout name (summary), exercise list (description)
+ * 종일 이벤트로 생성하여 시간대 문제 방지
  */
 export function workoutToCalendarEvent(
   workout: WorkoutData,
   routineName: string,
-  eventDate: string,
-  startTime: string = '09:00',
-  durationMinutes: number = 60,
-  timeZone: string = 'Asia/Seoul'
+  eventDate: string
 ): CalendarEvent {
   // Build exercise list for description
   const exerciseList = workout.exercises
@@ -197,27 +184,23 @@ export function workoutToCalendarEvent(
 
   // Calculate estimated duration based on exercises
   const estimatedMinutes = Math.max(
-    durationMinutes,
+    60,
     workout.exercises.length * 5 + 10 // 5 min per exercise + 10 min warmup
   );
 
-  // Build start and end datetime
-  const startDateTime = `${eventDate}T${startTime}:00`;
-  const endDate = new Date(`${eventDate}T${startTime}:00`);
-  endDate.setMinutes(endDate.getMinutes() + estimatedMinutes);
-  const endDateTime = endDate.toISOString().slice(0, 19);
+  // 종일 이벤트: end date는 시작일 다음날이어야 함
+  const endDateObj = new Date(eventDate + 'T00:00:00');
+  endDateObj.setDate(endDateObj.getDate() + 1);
+  const endDate = endDateObj.toISOString().split('T')[0];
 
   return {
     summary: `🏋️ ${workout.name} (${routineName})`,
     description: `📋 운동 목록:\n${exerciseList}\n\n⏱️ 예상 소요 시간: ${estimatedMinutes}분\n\n🎯 루틴: ${routineName}`,
-    start: { dateTime: startDateTime, timeZone },
-    end: { dateTime: endDateTime, timeZone },
+    start: { date: eventDate },
+    end: { date: endDate },
     colorId: '9', // Blue color for fitness events
     reminders: {
-      useDefault: false,
-      overrides: [
-        { method: 'popup', minutes: 30 },
-      ],
+      useDefault: true,
     },
   };
 }
@@ -237,20 +220,12 @@ export function validateCalendarEvent(event: CalendarEvent): { valid: boolean; e
     errors.push('description (운동 목록) is required');
   }
 
-  if (!event.start?.dateTime) {
-    errors.push('start.dateTime is required');
+  if (!event.start?.date) {
+    errors.push('start.date is required');
   }
 
-  if (!event.end?.dateTime) {
-    errors.push('end.dateTime is required');
-  }
-
-  if (!event.start?.timeZone) {
-    errors.push('start.timeZone is required');
-  }
-
-  if (!event.end?.timeZone) {
-    errors.push('end.timeZone is required');
+  if (!event.end?.date) {
+    errors.push('end.date is required');
   }
 
   return { valid: errors.length === 0, errors };
@@ -345,13 +320,7 @@ async function handleCreateEvents(
   request: CreateEventsRequest
 ): Promise<Response> {
   const supabase = createSupabaseAdmin();
-  const {
-    routineId,
-    startDate,
-    timeZone = 'Asia/Seoul',
-    defaultStartTime = '09:00',
-    durationMinutes = 60,
-  } = request;
+  const { routineId, startDate } = request;
 
   try {
     // Get routine with workouts
@@ -401,7 +370,7 @@ async function handleCreateEvents(
 
     // Create events for each workout day
     const start = new Date(startDate);
-    let currentDate = new Date(start);
+    const currentDate = new Date(start);
     let workoutIndex = 0;
 
     // Create events for the duration of the routine
@@ -421,7 +390,7 @@ async function handleCreateEvents(
           id: workout.id,
           name: workout.name,
           dayNumber: workout.day_number,
-          exercises: (workout.exercises || []).map((ex: any) => ({
+          exercises: (workout.exercises || []).map((ex: { name: string; sets: number; reps: string; muscle_group: string }) => ({
             name: ex.name,
             sets: ex.sets,
             reps: ex.reps,
@@ -432,10 +401,7 @@ async function handleCreateEvents(
         const calendarEvent = workoutToCalendarEvent(
           workoutData,
           routine.name,
-          eventDate,
-          defaultStartTime,
-          durationMinutes,
-          timeZone
+          eventDate
         );
 
         // Validate event data (Property 2)
@@ -540,14 +506,7 @@ async function handleUpdateEvent(
   request: UpdateEventRequest
 ): Promise<Response> {
   const supabase = createSupabaseAdmin();
-  const {
-    eventId,
-    workout,
-    eventDate,
-    timeZone = 'Asia/Seoul',
-    startTime = '09:00',
-    durationMinutes = 60,
-  } = request;
+  const { eventId, workout, eventDate } = request;
 
   try {
     // Verify the event belongs to this user
@@ -578,10 +537,7 @@ async function handleUpdateEvent(
     const calendarEvent = workoutToCalendarEvent(
       workout,
       routineName,
-      eventDate,
-      startTime,
-      durationMinutes,
-      timeZone
+      eventDate
     );
 
     // Validate event data (Property 2)
