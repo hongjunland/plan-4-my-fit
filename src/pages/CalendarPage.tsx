@@ -29,22 +29,25 @@ const CalendarPage = () => {
     { key: 'month', label: '월간' },
   ] as const;
 
-  // 초기 데이터 로드 (페이지 진입 시마다)
+  // user.id를 안정적인 의존성으로 사용
+  const userId = user?.id;
+
+  // 초기 데이터 로드 (페이지 진입 시 한 번만)
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     
     const loadData = async () => {
       try {
         setIsLoading(true);
         
         // 캐시 무시하고 항상 최신 활성 루틴 가져오기
-        const routine = await routinesService.getActiveRoutine(user.id, false);
+        const routine = await routinesService.getActiveRoutine(userId, false);
         setActiveRoutine(routine);
         
         if (routine) {
           // 이번 달 로그 로드
           const today = new Date();
-          const logs = await workoutLogService.getMonthlyLogs(user.id, today.getFullYear(), today.getMonth() + 1);
+          const logs = await workoutLogService.getMonthlyLogs(userId, today.getFullYear(), today.getMonth() + 1);
           const logsMap = new Map<string, WorkoutLog>();
           logs.forEach(log => {
             logsMap.set(log.date, {
@@ -66,7 +69,7 @@ const CalendarPage = () => {
     };
 
     loadData();
-  }, [user]);
+  }, [userId]);
 
   // 운동 완료 토글 핸들러
   const handleToggleExercise = useCallback(async (
@@ -75,7 +78,7 @@ const CalendarPage = () => {
     date: string,
     totalExerciseCount: number
   ) => {
-    if (!user || !activeRoutine) return;
+    if (!userId || !activeRoutine) return;
 
     // 낙관적 업데이트
     setWorkoutLogs(prev => {
@@ -103,7 +106,7 @@ const CalendarPage = () => {
     // DB 저장 (비동기)
     try {
       await workoutLogService.toggleExerciseCompletion(
-        user.id,
+        userId,
         activeRoutine.id,
         workoutId,
         exerciseId,
@@ -113,7 +116,7 @@ const CalendarPage = () => {
     } catch {
       // 에러 시 롤백 (간단히 무시)
     }
-  }, [user, activeRoutine]);
+  }, [userId, activeRoutine]);
 
   if (isLoading) {
     return (
