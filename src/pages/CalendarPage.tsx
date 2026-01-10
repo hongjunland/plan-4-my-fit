@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { clsx } from 'clsx';
 import { CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
@@ -22,7 +22,6 @@ const CalendarPage = () => {
   const [workoutLogs, setWorkoutLogs] = useState<Map<string, WorkoutLog>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const loadedRef = useRef(false);
   
   const tabs = [
     { key: 'today', label: '일일' },
@@ -30,16 +29,16 @@ const CalendarPage = () => {
     { key: 'month', label: '월간' },
   ] as const;
 
-  // 초기 데이터 로드 (한 번만)
+  // 초기 데이터 로드 (페이지 진입 시마다)
   useEffect(() => {
-    if (!user || loadedRef.current) return;
+    if (!user) return;
     
     const loadData = async () => {
       try {
-        loadedRef.current = true;
         setIsLoading(true);
         
-        const routine = await routinesService.getActiveRoutine(user.id);
+        // 캐시 무시하고 항상 최신 활성 루틴 가져오기
+        const routine = await routinesService.getActiveRoutine(user.id, false);
         setActiveRoutine(routine);
         
         if (routine) {
@@ -56,6 +55,8 @@ const CalendarPage = () => {
             });
           });
           setWorkoutLogs(logsMap);
+        } else {
+          setWorkoutLogs(new Map());
         }
       } catch {
         // 에러 무시
