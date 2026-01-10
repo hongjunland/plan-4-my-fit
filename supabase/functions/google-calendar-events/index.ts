@@ -97,10 +97,14 @@ function createSupabaseAdmin() {
 
 function createSupabaseClient(authHeader: string) {
   const supabaseUrl = getEnvVar('SUPABASE_URL');
-  const supabaseAnonKey = getEnvVar('SUPABASE_ANON_KEY');
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  const supabaseServiceKey = getEnvVar('SUPABASE_SERVICE_ROLE_KEY');
+  
+  // Extract the token from "Bearer <token>"
+  const token = authHeader.replace('Bearer ', '');
+  
+  return createClient(supabaseUrl, supabaseServiceKey, {
     global: {
-      headers: { Authorization: authHeader },
+      headers: { Authorization: `Bearer ${token}` },
     },
   });
 }
