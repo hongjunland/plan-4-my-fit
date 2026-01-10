@@ -2,13 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { routinesService } from '../../services/routines';
 import { aiService } from '../../services/ai';
 import { queryKeys } from '../../lib/queryClient';
-import type { Routine, RoutineSettings, Profile } from '../../types';
+import type { RoutineSettings, Profile } from '../../types';
+import type { UpdateRoutineRequest, CreateRoutineRequest } from '../../services/routines';
 
 // Get all routines
 export const useRoutines = (userId?: string) => {
   return useQuery({
     queryKey: queryKeys.routines,
-    queryFn: () => routinesService.getRoutines(userId!),
+    queryFn: () => routinesService.getUserRoutines(userId!),
     enabled: !!userId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -53,7 +54,8 @@ export const useCreateRoutine = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: routinesService.createRoutine,
+    mutationFn: ({ userId, request }: { userId: string; request: CreateRoutineRequest }) =>
+      routinesService.createRoutine(userId, request),
     onSuccess: () => {
       // Invalidate routines to refetch the list
       queryClient.invalidateQueries({ queryKey: queryKeys.routines });
@@ -66,9 +68,9 @@ export const useUpdateRoutine = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ routineId, updates }: { routineId: string; updates: Partial<Routine> }) =>
+    mutationFn: ({ routineId, updates }: { routineId: string; updates: UpdateRoutineRequest }) =>
       routinesService.updateRoutine(routineId, updates),
-    onSuccess: (routine: any) => {
+    onSuccess: (routine) => {
       // Update specific routine cache
       queryClient.setQueryData(queryKeys.routine(routine.id), routine);
       // Invalidate routines list
@@ -86,10 +88,11 @@ export const useActivateRoutine = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: routinesService.activateRoutine,
-    onSuccess: (routine: any) => {
-      // Update active routine cache
-      queryClient.setQueryData(queryKeys.activeRoutine, routine);
+    mutationFn: ({ userId, routineId }: { userId: string; routineId: string }) =>
+      routinesService.activateRoutine(userId, routineId),
+    onSuccess: () => {
+      // Invalidate active routine cache
+      queryClient.invalidateQueries({ queryKey: queryKeys.activeRoutine });
       // Invalidate routines list to update all routine statuses
       queryClient.invalidateQueries({ queryKey: queryKeys.routines });
     },
@@ -101,7 +104,7 @@ export const useDeleteRoutine = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: routinesService.deleteRoutine,
+    mutationFn: (routineId: string) => routinesService.deleteRoutine(routineId),
     onSuccess: (_, routineId: string) => {
       // Remove from cache
       queryClient.removeQueries({ queryKey: queryKeys.routine(routineId) });
@@ -118,7 +121,8 @@ export const useDuplicateRoutine = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: routinesService.duplicateRoutine,
+    mutationFn: ({ userId, routineId }: { userId: string; routineId: string }) =>
+      routinesService.duplicateRoutine(userId, routineId),
     onSuccess: () => {
       // Invalidate routines to refetch the list
       queryClient.invalidateQueries({ queryKey: queryKeys.routines });

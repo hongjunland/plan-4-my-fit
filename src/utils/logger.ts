@@ -14,7 +14,6 @@ interface LogContext {
 
 class Logger {
   private isDevelopment = import.meta.env.DEV;
-  private isProduction = import.meta.env.PROD;
   
   // Sensitive data patterns to filter out
   private sensitivePatterns = [

@@ -1,7 +1,5 @@
 {
   "version": 2,
-  "name": "plan4myfit",
-  "alias": ["plan4myfit.vercel.app"],
   "regions": ["icn1"],
   "framework": "vite",
   "buildCommand": "pnpm build",
@@ -45,16 +43,7 @@
       ]
     },
     {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/(.*\\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot))",
+      "source": "/assets/:path*",
       "headers": [
         {
           "key": "Cache-Control",
@@ -68,11 +57,5 @@
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
-  ],
-  "functions": {
-    "app/api/**/*.ts": {
-      "runtime": "@vercel/node"
-    }
-  },
-  "crons": []
+  ]
 }

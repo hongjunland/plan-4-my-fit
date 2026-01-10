@@ -646,7 +646,8 @@ export const workoutLogService = {
     routineId: string, 
     workoutId: string, 
     exerciseId: string, 
-    date: string
+    date: string,
+    totalExerciseCount?: number // 전체 운동 개수 추가
   ): Promise<WorkoutLog> {
     try {
       // 기존 로그 조회 - .single() 대신 배열로 조회하여 406 오류 방지
@@ -681,8 +682,14 @@ export const workoutLogService = {
         completedExercises.push(exerciseId);
       }
       
-      // 전체 운동 완료 여부 확인 (이는 실제 루틴의 운동 개수와 비교해야 함)
-      const isCompleted = completedExercises.length > 0; // 임시로 하나라도 완료되면 true
+      // 전체 운동 완료 여부 확인 - 100% 완료했을 때만 true
+      let isCompleted = false;
+      if (totalExerciseCount !== undefined) {
+        isCompleted = completedExercises.length === totalExerciseCount && totalExerciseCount > 0;
+      } else {
+        // totalExerciseCount가 없으면 기존 로직 유지 (하위 호환성)
+        isCompleted = completedExercises.length > 0;
+      }
       
       const logData: Tables['workout_logs']['Insert'] = {
         user_id: userId,

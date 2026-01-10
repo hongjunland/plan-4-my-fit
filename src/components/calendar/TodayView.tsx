@@ -96,7 +96,13 @@ const TodayView = ({ className, activeRoutine, error }: TodayViewProps) => {
     if (!activeRoutine || !todayWorkout || !user) return;
 
     try {
-      await toggleExerciseCompletion(activeRoutine.id, todayWorkout.id, exercise.id, today);
+      await toggleExerciseCompletion(
+        activeRoutine.id, 
+        todayWorkout.id, 
+        exercise.id, 
+        today,
+        todayWorkout.exercises.length // 전체 운동 개수 전달
+      );
       
       // 진행률 업데이트
       const updatedProgress = await getWorkoutProgress(activeRoutine.id, todayWorkout.id, today);
@@ -163,7 +169,7 @@ const TodayView = ({ className, activeRoutine, error }: TodayViewProps) => {
   if (!activeRoutine) {
     return (
       <div className={clsx('bg-white rounded-xl p-6 shadow-sm', className)}>
-        <h3 className="font-semibold text-gray-900 mb-4">오늘의 운동</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">일일 운동</h3>
         <div className="text-center py-8">
           <div className="text-gray-400 mb-4">
             <ClockIcon className="w-12 h-12 mx-auto" />
@@ -180,7 +186,7 @@ const TodayView = ({ className, activeRoutine, error }: TodayViewProps) => {
   if (!todayWorkout) {
     return (
       <div className={clsx('bg-white rounded-xl p-6 shadow-sm', className)}>
-        <h3 className="font-semibold text-gray-900 mb-4">오늘의 운동</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">일일 운동</h3>
         <div className="text-center py-8">
           <div className="text-gray-400 mb-4">
             <ClockIcon className="w-12 h-12 mx-auto" />
@@ -198,7 +204,7 @@ const TodayView = ({ className, activeRoutine, error }: TodayViewProps) => {
     <div className={clsx('bg-white rounded-xl p-6 shadow-sm', className)}>
       {/* 헤더 */}
       <div className="mb-6">
-        <h3 className="font-semibold text-gray-900 mb-1">오늘의 운동</h3>
+        <h3 className="font-semibold text-gray-900 mb-1">일일 운동</h3>
         <p className="text-sm text-gray-500">{todayFormatted}</p>
       </div>
 

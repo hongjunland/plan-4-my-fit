@@ -43,25 +43,25 @@ export const useToggleExercise = () => {
       userId, 
       routineId, 
       workoutId, 
+      exerciseId,
       date, 
-      exerciseId, 
-      completed 
+      totalExerciseCount 
     }: {
       userId: string;
       routineId: string;
       workoutId: string;
-      date: string;
       exerciseId: string;
-      completed: boolean;
+      date: string;
+      totalExerciseCount?: number;
     }) => workoutLogService.toggleExerciseCompletion(
       userId, 
       routineId, 
       workoutId, 
-      date, 
       exerciseId, 
-      completed
+      date, 
+      totalExerciseCount
     ),
-    onSuccess: (log: any) => {
+    onSuccess: (log) => {
       // Update today's log if it's for today
       const today = new Date().toISOString().split('T')[0];
       if (log && log.date === today) {

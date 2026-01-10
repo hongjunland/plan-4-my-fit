@@ -13,6 +13,8 @@ interface WorkoutLog {
   isCompleted: boolean;
 }
 
+type ToggleExerciseHandler = (workoutId: string, exerciseId: string, date: string, totalExerciseCount: number) => void;
+
 const CalendarPage = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'today' | 'week' | 'month'>('today');
@@ -23,7 +25,7 @@ const CalendarPage = () => {
   const loadedRef = useRef(false);
   
   const tabs = [
-    { key: 'today', label: '오늘' },
+    { key: 'today', label: '일일' },
     { key: 'week', label: '주간' },
     { key: 'month', label: '월간' },
   ] as const;
@@ -69,7 +71,8 @@ const CalendarPage = () => {
   const handleToggleExercise = useCallback(async (
     workoutId: string,
     exerciseId: string,
-    date: string
+    date: string,
+    totalExerciseCount: number
   ) => {
     if (!user || !activeRoutine) return;
 
@@ -83,11 +86,14 @@ const CalendarPage = () => {
         ? completedExercises.filter(id => id !== exerciseId)
         : [...completedExercises, exerciseId];
       
+      // 100% 완료했을 때만 완료로 처리
+      const isCompleted = newCompleted.length === totalExerciseCount && totalExerciseCount > 0;
+      
       newMap.set(date, {
         date,
         workoutId,
         completedExercises: newCompleted,
-        isCompleted: newCompleted.length > 0
+        isCompleted
       });
       
       return newMap;
@@ -100,7 +106,8 @@ const CalendarPage = () => {
         activeRoutine.id,
         workoutId,
         exerciseId,
-        date
+        date,
+        totalExerciseCount
       );
     } catch {
       // 에러 시 롤백 (간단히 무시)
@@ -140,9 +147,11 @@ const CalendarPage = () => {
       
       {/* Tab Content */}
       {activeTab === 'today' && (
-        <TodayView 
+        <DailyView 
           activeRoutine={activeRoutine}
           workoutLogs={workoutLogs}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
           onToggleExercise={handleToggleExercise}
         />
       )}
@@ -161,7 +170,7 @@ const CalendarPage = () => {
           workoutLogs={workoutLogs}
           onSelectDate={(date) => {
             setSelectedDate(date);
-            setActiveTab('today');
+            setActiveTab('today'); // 일일 뷰로 이동
           }}
         />
       )}
@@ -187,28 +196,76 @@ const getTodayWorkout = (routine: RoutineWithDetails, date: string): WorkoutWith
   return routine.workouts[workoutIndex] || null;
 };
 
-// 오늘 뷰
-const TodayView = ({ 
+// 일일 뷰 (날짜 선택 가능)
+const DailyView = ({ 
   activeRoutine,
   workoutLogs,
+  selectedDate,
+  onSelectDate,
   onToggleExercise
 }: { 
   activeRoutine: RoutineWithDetails | null;
   workoutLogs: Map<string, WorkoutLog>;
-  onToggleExercise: (workoutId: string, exerciseId: string, date: string) => void;
+  selectedDate: string;
+  onSelectDate: (date: string) => void;
+  onToggleExercise: ToggleExerciseHandler;
 }) => {
   const today = new Date().toISOString().split('T')[0];
-  const todayFormatted = new Date().toLocaleDateString('ko-KR', {
+  const selectedDateObj = new Date(selectedDate);
+  const isToday = selectedDate === today;
+  
+  const selectedDateFormatted = selectedDateObj.toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     weekday: 'long'
   });
 
+  // 날짜 변경 핸들러
+  const handleDateChange = (direction: 'prev' | 'next') => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
+    onSelectDate(newDate.toISOString().split('T')[0]);
+  };
+
+  // 오늘로 이동
+  const goToToday = () => {
+    onSelectDate(today);
+  };
+
   if (!activeRoutine) {
     return (
       <div className="bg-white rounded-xl p-6 shadow-sm">
-        <h3 className="font-semibold text-gray-900 mb-4">오늘의 운동</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900">일일 운동</h3>
+          <button
+            onClick={goToToday}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            오늘로
+          </button>
+        </div>
+        
+        {/* 날짜 선택기 */}
+        <div className="flex items-center justify-between mb-6 p-3 bg-gray-50 rounded-lg">
+          <button
+            onClick={() => handleDateChange('prev')}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            ←
+          </button>
+          <div className="text-center">
+            <p className="text-sm font-medium text-gray-900">{selectedDateFormatted}</p>
+            {isToday && <p className="text-xs text-blue-600">오늘</p>}
+          </div>
+          <button
+            onClick={() => handleDateChange('next')}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            →
+          </button>
+        </div>
+
         <div className="text-center py-8">
           <ClockIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
           <p className="text-gray-500 text-sm">
@@ -220,35 +277,92 @@ const TodayView = ({
     );
   }
 
-  const todayWorkout = getTodayWorkout(activeRoutine, today);
+  const selectedWorkout = getTodayWorkout(activeRoutine, selectedDate);
   
-  if (!todayWorkout) {
+  if (!selectedWorkout) {
     return (
       <div className="bg-white rounded-xl p-6 shadow-sm">
-        <h3 className="font-semibold text-gray-900 mb-4">오늘의 운동</h3>
-        <p className="text-sm text-gray-500 mb-4">{todayFormatted}</p>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900">일일 운동</h3>
+          <button
+            onClick={goToToday}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            오늘로
+          </button>
+        </div>
+        
+        {/* 날짜 선택기 */}
+        <div className="flex items-center justify-between mb-6 p-3 bg-gray-50 rounded-lg">
+          <button
+            onClick={() => handleDateChange('prev')}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            ←
+          </button>
+          <div className="text-center">
+            <p className="text-sm font-medium text-gray-900">{selectedDateFormatted}</p>
+            {isToday && <p className="text-xs text-blue-600">오늘</p>}
+          </div>
+          <button
+            onClick={() => handleDateChange('next')}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            →
+          </button>
+        </div>
+
         <div className="text-center py-8">
-          <p className="text-gray-500 text-sm">오늘은 휴식일입니다 💪</p>
+          <p className="text-gray-500 text-sm">
+            {isToday ? '오늘은 휴식일입니다 💪' : '이 날은 휴식일입니다 💪'}
+          </p>
         </div>
       </div>
     );
   }
 
-  const log = workoutLogs.get(today);
+  const log = workoutLogs.get(selectedDate);
   const completedExercises = new Set(log?.completedExercises || []);
   const completedCount = completedExercises.size;
-  const totalCount = todayWorkout.exercises.length;
+  const totalCount = selectedWorkout.exercises.length;
   const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm">
-      <div className="mb-6">
-        <h3 className="font-semibold text-gray-900 mb-1">오늘의 운동</h3>
-        <p className="text-sm text-gray-500">{todayFormatted}</p>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">일일 운동</h3>
+        {!isToday && (
+          <button
+            onClick={goToToday}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            오늘로
+          </button>
+        )}
+      </div>
+      
+      {/* 날짜 선택기 */}
+      <div className="flex items-center justify-between mb-6 p-3 bg-gray-50 rounded-lg">
+        <button
+          onClick={() => handleDateChange('prev')}
+          className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+        >
+          ←
+        </button>
+        <div className="text-center">
+          <p className="text-sm font-medium text-gray-900">{selectedDateFormatted}</p>
+          {isToday && <p className="text-xs text-blue-600">오늘</p>}
+        </div>
+        <button
+          onClick={() => handleDateChange('next')}
+          className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+        >
+          →
+        </button>
       </div>
 
       <div className="mb-6">
-        <h4 className="font-medium text-gray-900 mb-3">{todayWorkout.name}</h4>
+        <h4 className="font-medium text-gray-900 mb-3">{selectedWorkout.name}</h4>
         <div className="mb-2">
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm text-gray-600">진행률</span>
@@ -269,7 +383,7 @@ const TodayView = ({
             <div className="flex items-center">
               <CheckCircleIconSolid className="w-5 h-5 text-green-600 mr-2" />
               <span className="text-green-800 text-sm font-medium">
-                오늘 운동을 완료했습니다! 🎉
+                {isToday ? '오늘 운동을 완료했습니다! 🎉' : '이 날의 운동을 완료했습니다! 🎉'}
               </span>
             </div>
           </div>
@@ -277,9 +391,9 @@ const TodayView = ({
       </div>
 
       <ExerciseList
-        exercises={todayWorkout.exercises}
+        exercises={selectedWorkout.exercises}
         completedExercises={completedExercises}
-        onToggle={(exerciseId) => onToggleExercise(todayWorkout.id, exerciseId, today)}
+        onToggle={(exerciseId) => onToggleExercise(selectedWorkout.id, exerciseId, selectedDate, selectedWorkout.exercises.length)}
       />
     </div>
   );
@@ -349,7 +463,7 @@ const WeekView = ({
   workoutLogs: Map<string, WorkoutLog>;
   selectedDate: string;
   onSelectDate: (date: string) => void;
-  onToggleExercise: (workoutId: string, exerciseId: string, date: string) => void;
+  onToggleExercise: ToggleExerciseHandler;
 }) => {
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
@@ -444,7 +558,7 @@ const WeekView = ({
             <ExerciseList
               exercises={selectedWorkout.exercises}
               completedExercises={completedExercises}
-              onToggle={(exerciseId) => onToggleExercise(selectedWorkout.id, exerciseId, selectedDate)}
+              onToggle={(exerciseId) => onToggleExercise(selectedWorkout.id, exerciseId, selectedDate, selectedWorkout.exercises.length)}
             />
           </>
         ) : (

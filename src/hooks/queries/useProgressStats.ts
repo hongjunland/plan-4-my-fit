@@ -10,7 +10,7 @@ import { queryKeys } from '../../lib/queryClient';
 export const useWeeklyStats = (userId?: string, routineId?: string, weekStart?: string) => {
   return useQuery({
     queryKey: queryKeys.weeklyStats(weekStart!),
-    queryFn: () => calculateWeeklyStats(userId!, weekStart!),
+    queryFn: () => calculateWeeklyStats(userId!),
     enabled: !!(userId && routineId && weekStart),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -20,7 +20,7 @@ export const useWeeklyStats = (userId?: string, routineId?: string, weekStart?: 
 export const useMonthlyStats = (userId?: string, routineId?: string, year?: number, month?: number) => {
   return useQuery({
     queryKey: queryKeys.monthlyStats(year!, month!),
-    queryFn: () => calculateMonthlyStats(userId!, year!, month!),
+    queryFn: () => calculateMonthlyStats(userId!, year, month),
     enabled: !!(userId && routineId && year && month),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

@@ -112,3 +112,7 @@ export interface WorkoutLog {
   completedExercises: string[];  // exercise id 배열
   isCompleted: boolean;
 }
+
+
+// Re-export from services for convenience
+export type { RoutineWithDetails, WorkoutWithExercises, CreateRoutineRequest, UpdateRoutineRequest } from '../services/routines';

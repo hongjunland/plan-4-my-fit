@@ -44,13 +44,6 @@ const RoutineCreationForm = () => {
 
   const workoutsPerWeek = watch('workoutsPerWeek');
 
-  // 주당 운동 횟수에 따른 분할 방식 추천
-  const getRecommendedSplit = (workouts: number): SplitType => {
-    if (workouts <= 2) return 'full_body';
-    if (workouts <= 4) return 'upper_lower';
-    return 'push_pull_legs';
-  };
-
   const splitOptions = [
     {
       value: 'full_body' as SplitType,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { workoutLogService } from '../services/database';
 import useAuth from './useAuth';
 import type { Database } from '../types/database';
@@ -103,7 +103,8 @@ const useWorkoutLogs = () => {
     routineId: string,
     workoutId: string,
     exerciseId: string,
-    date: string = new Date().toISOString().split('T')[0]
+    date: string = new Date().toISOString().split('T')[0],
+    totalExerciseCount?: number // 전체 운동 개수 추가
   ) => {
     if (!user) return null;
     
@@ -115,7 +116,8 @@ const useWorkoutLogs = () => {
         routineId,
         workoutId,
         exerciseId,
-        date
+        date,
+        totalExerciseCount
       );
       
       // 로컬 상태 업데이트

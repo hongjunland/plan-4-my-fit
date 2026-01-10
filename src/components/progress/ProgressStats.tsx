@@ -32,7 +32,7 @@ const ProgressStats: React.FC<ProgressStatsProps> = ({
             <span className="text-sm font-medium text-gray-900">{weeklyCompletionRate}%</span>
           </div>
           <ProgressBar 
-            progress={weeklyCompletionRate} 
+            value={weeklyCompletionRate} 
             className="h-3"
             color="primary"
           />
@@ -48,7 +48,7 @@ const ProgressStats: React.FC<ProgressStatsProps> = ({
             <span className="text-sm font-medium text-gray-900">{routineCompletionRate}%</span>
           </div>
           <ProgressBar 
-            progress={routineCompletionRate} 
+            value={routineCompletionRate} 
             className="h-3"
             color="success"
           />
