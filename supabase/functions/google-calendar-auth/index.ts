@@ -48,27 +48,20 @@ function createSupabaseAdmin() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-// Create Supabase client with user's JWT for authenticated operations
-function createSupabaseClient(authHeader: string) {
+// Extract user ID from JWT token using service role key
+async function getUserIdFromAuth(authHeader: string): Promise<string> {
   const supabaseUrl = getEnvVar('SUPABASE_URL');
   const supabaseServiceKey = getEnvVar('SUPABASE_SERVICE_ROLE_KEY');
   
   // Extract the token from "Bearer <token>"
   const token = authHeader.replace('Bearer ', '');
   
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    global: {
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  });
-}
-
-// Extract user ID from JWT token
-async function getUserIdFromAuth(authHeader: string): Promise<string> {
-  const supabase = createSupabaseClient(authHeader);
-  const { data: { user }, error } = await supabase.auth.getUser();
+  // Use service role client to verify the user's JWT token
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const { data: { user }, error } = await supabase.auth.getUser(token);
   
   if (error || !user) {
+    console.error('Auth error:', error?.message || 'No user found');
     throw new Error('Unauthorized: Invalid or expired token');
   }
   
