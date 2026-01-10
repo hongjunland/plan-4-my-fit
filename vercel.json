@@ -54,8 +54,9 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/:path((?!api|assets|_next).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "trailingSlash": false
 }
