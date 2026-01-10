@@ -1,5 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
-import react from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react-swc'
 import { VitePWA } from 'vite-plugin-pwa'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import path from 'path'
@@ -27,7 +27,6 @@ export default defineConfig(({ command, mode }) => {
         },
         release: {
           name: env.VITE_APP_VERSION || '1.0.0',
-          uploadLegacySourcemaps: false,
         },
       })
     ] : []),
@@ -76,9 +75,6 @@ export default defineConfig(({ command, mode }) => {
                 expiration: {
                   maxEntries: 10,
                   maxAgeSeconds: 60 * 60 * 24 // 24 hours
-                },
-                cacheKeyWillBeUsed: async ({ request }) => {
-                  return `${request.url}`;
                 }
               }
             },
