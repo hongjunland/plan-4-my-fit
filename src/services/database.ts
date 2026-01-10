@@ -25,6 +25,15 @@ type Profile = Tables['profiles']['Row'];
 type Routine = Tables['routines']['Row'];
 type WorkoutLog = Tables['workout_logs']['Row'];
 
+// 월간 로그 캐시 (API 호출 최소화)
+interface MonthlyLogsCache {
+  key: string;
+  data: WorkoutLog[];
+  timestamp: number;
+}
+let monthlyLogsCache: MonthlyLogsCache | null = null;
+const MONTHLY_LOGS_CACHE_DURATION = 5 * 60 * 1000; // 5분
+
 // Profile validation errors
 export class ProfileValidationError extends Error {
   constructor(field: string, message: string) {
@@ -700,6 +709,9 @@ export const workoutLogService = {
         is_completed: isCompleted
       };
       
+      // 캐시 무효화 (데이터 변경됨)
+      this.invalidateMonthlyLogsCache();
+      
       return await this.createOrUpdateWorkoutLog(logData);
     } catch (error) {
       console.error('Error toggling exercise completion:', error);
@@ -749,21 +761,47 @@ export const workoutLogService = {
     }
   },
 
-  // 월간 기록 조회 (요구사항 5.12)
-  async getMonthlyLogs(userId: string, year: number, month: number): Promise<WorkoutLog[]> {
+  // 월간 기록 조회 (요구사항 5.12) - 캐싱 적용
+  async getMonthlyLogs(userId: string, year: number, month: number, useCache = true): Promise<WorkoutLog[]> {
     try {
+      const cacheKey = `${userId}-${year}-${month}`;
+      
+      // 캐시 확인
+      if (useCache && monthlyLogsCache && 
+          monthlyLogsCache.key === cacheKey &&
+          (Date.now() - monthlyLogsCache.timestamp) < MONTHLY_LOGS_CACHE_DURATION) {
+        if (process.env.NODE_ENV === 'development') {
+          logger.debug('월간 로그 캐시 사용', { cacheKey });
+        }
+        return monthlyLogsCache.data;
+      }
+
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0); // 해당 월의 마지막 날
       
-      return await this.getWorkoutLogsByDateRange(
+      const result = await this.getWorkoutLogsByDateRange(
         userId,
         startDate.toISOString().split('T')[0],
         endDate.toISOString().split('T')[0]
       );
+
+      // 캐시 업데이트
+      monthlyLogsCache = {
+        key: cacheKey,
+        data: result,
+        timestamp: Date.now()
+      };
+
+      return result;
     } catch (error) {
       console.error('Error fetching monthly logs:', error);
       throw new Error('월간 운동 기록 조회 중 오류가 발생했습니다');
     }
+  },
+
+  // 월간 로그 캐시 무효화 (운동 완료 시 호출)
+  invalidateMonthlyLogsCache() {
+    monthlyLogsCache = null;
   },
 
   // 오늘의 운동 기록 조회
