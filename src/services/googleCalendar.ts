@@ -67,6 +67,12 @@ const SYNC_FUNCTION_PATH = '/functions/v1/google-calendar-sync';
 async function getAccessToken(): Promise<string> {
   const { data: { session }, error } = await supabase.auth.getSession();
   
+  logger.debug('getAccessToken called', { 
+    hasSession: !!session, 
+    hasError: !!error,
+    errorMessage: error?.message 
+  });
+  
   if (error || !session) {
     throw new Error('Not authenticated. Please log in first.');
   }
@@ -102,6 +108,13 @@ async function callEdgeFunction<T>(
       'Content-Type': 'application/json',
     },
   };
+  
+  logger.debug('callEdgeFunction', { 
+    url, 
+    method, 
+    hasAccessToken: !!accessToken,
+    hasAnonKey: !!anonKey 
+  });
   
   if (body && method !== 'GET') {
     options.body = JSON.stringify(body);
