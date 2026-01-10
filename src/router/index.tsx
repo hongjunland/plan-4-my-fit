@@ -28,6 +28,8 @@ const CalendarPage = withLazyLoading(
   () => import('../pages/CalendarPage'),
   <CalendarLoader />
 );
+const CalendarSettingsPage = lazy(() => import('../pages/CalendarSettingsPage'));
+const GoogleCalendarCallbackPage = lazy(() => import('../pages/GoogleCalendarCallbackPage'));
 const ProgressPage = lazy(() => import('../pages/ProgressPage'));
 
 // Root component that handles authentication routing
@@ -122,6 +124,10 @@ export const router = createBrowserRouter([
     element: <ProtectedProfileSetup />,
   },
   {
+    path: ROUTES.GOOGLE_CALENDAR_CALLBACK,
+    element: <GoogleCalendarCallbackPage />,
+  },
+  {
     path: '/app',
     element: <ProtectedLayout />,
     children: [
@@ -152,6 +158,10 @@ export const router = createBrowserRouter([
       {
         path: 'calendar',
         element: <CalendarPage />,
+      },
+      {
+        path: 'calendar/settings',
+        element: <CalendarSettingsPage />,
       },
       {
         path: 'progress',
