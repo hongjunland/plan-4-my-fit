@@ -24,12 +24,11 @@ interface CalendarEvent {
   id?: string;
   summary: string;
   description: string;
-  start: { dateTime: string; timeZone: string };
-  end: { dateTime: string; timeZone: string };
+  start: { date: string };  // 종일 이벤트
+  end: { date: string };    // 종일 이벤트
   colorId?: string;
   reminders?: {
     useDefault: boolean;
-    overrides?: Array<{ method: string; minutes: number }>;
   };
 }
 
@@ -174,39 +173,36 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
 // ============================================================================
 
 /**
- * Converts workout data to Google Calendar event format
+ * Converts workout data to Google Calendar all-day event format
+ * 종일 이벤트로 생성하여 시간대 문제 방지
  */
 function workoutToCalendarEvent(
   workout: WorkoutData,
   routineName: string,
-  eventDate: string,
-  startTime: string = '09:00',
-  durationMinutes: number = 60,
-  timeZone: string = 'Asia/Seoul'
+  eventDate: string
 ): CalendarEvent {
   const exerciseList = workout.exercises
     .map((ex, idx) => `${idx + 1}. ${ex.name} - ${ex.sets}세트 x ${ex.reps}`)
     .join('\n');
 
   const estimatedMinutes = Math.max(
-    durationMinutes,
+    60,
     workout.exercises.length * 5 + 10
   );
 
-  const startDateTime = `${eventDate}T${startTime}:00`;
-  const endDate = new Date(`${eventDate}T${startTime}:00`);
-  endDate.setMinutes(endDate.getMinutes() + estimatedMinutes);
-  const endDateTime = endDate.toISOString().slice(0, 19);
+  // 종일 이벤트: end date는 시작일 다음날이어야 함
+  const endDateObj = new Date(eventDate + 'T00:00:00');
+  endDateObj.setDate(endDateObj.getDate() + 1);
+  const endDate = endDateObj.toISOString().split('T')[0];
 
   return {
     summary: `🏋️ ${workout.name} (${routineName})`,
     description: `📋 운동 목록:\n${exerciseList}\n\n⏱️ 예상 소요 시간: ${estimatedMinutes}분\n\n🎯 루틴: ${routineName}`,
-    start: { dateTime: startDateTime, timeZone },
-    end: { dateTime: endDateTime, timeZone },
+    start: { date: eventDate },
+    end: { date: endDate },
     colorId: '9',
     reminders: {
-      useDefault: false,
-      overrides: [{ method: 'popup', minutes: 30 }],
+      useDefault: true,
     },
   };
 }
@@ -320,10 +316,7 @@ async function createRoutineEvents(
   userId: string,
   routineId: string,
   accessToken: string,
-  startDate: string,
-  timeZone: string,
-  defaultStartTime: string,
-  durationMinutes: number
+  startDate: string
 ): Promise<{ createdCount: number; errors: string[] }> {
   const supabase = createSupabaseAdmin();
   const errors: string[] = [];
@@ -405,10 +398,7 @@ async function createRoutineEvents(
       const calendarEvent = workoutToCalendarEvent(
         workoutData,
         routine.name,
-        eventDate,
-        defaultStartTime,
-        durationMinutes,
-        timeZone
+        eventDate
       );
 
       try {
@@ -491,10 +481,7 @@ async function handleSyncRoutine(
       userId,
       routineId,
       accessToken,
-      startDate,
-      timeZone,
-      defaultStartTime,
-      durationMinutes
+      startDate
     );
 
     const allErrors = [...deleteResult.errors, ...createResult.errors];
@@ -629,10 +616,7 @@ async function handleSyncAll(
           userId,
           routine.id,
           accessToken,
-          startDate,
-          timeZone,
-          defaultStartTime,
-          durationMinutes
+          startDate
         );
         totalCreated += createResult.createdCount;
         allErrors.push(...createResult.errors);
