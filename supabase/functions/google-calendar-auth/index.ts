@@ -17,7 +17,9 @@ const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
 const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
-const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email';
+// calendar scope provides full read/write access to calendar events
+// calendar.events only provides read access, which is insufficient for creating events
+const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email';
 
 interface TokenResponse {
   access_token: string;
