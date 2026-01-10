@@ -92,10 +92,13 @@ async function callEdgeFunction<T>(
     url += `?${params.toString()}`;
   }
   
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
   const options: RequestInit = {
     method,
     headers: {
       'Authorization': `Bearer ${accessToken}`,
+      'apikey': anonKey,
       'Content-Type': 'application/json',
     },
   };
