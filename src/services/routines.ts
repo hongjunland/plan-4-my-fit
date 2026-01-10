@@ -7,6 +7,7 @@ import {
   deleteEventsForRoutine,
   syncRoutine as syncRoutineToCalendar
 } from './googleCalendar';
+import { scheduledWorkoutsService } from './scheduledWorkouts';
 
 // Exercise 타입을 re-export
 export type { Exercise } from '../types';
@@ -529,6 +530,31 @@ class RoutinesService {
           console.error('루틴 활성화 오류:', activateError);
         }
         throw activateError;
+      }
+
+      // 날짜별 일정 생성
+      try {
+        const routine = await this.getRoutine(routineId);
+        if (routine && routine.workouts.length > 0) {
+          const today = new Date();
+          const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+          const durationWeeks = routine.settings?.durationWeeks || 4;
+          
+          await scheduledWorkoutsService.generateSchedule(
+            routineId,
+            userId,
+            startDate,
+            durationWeeks,
+            routine.workouts
+          );
+          logger.info('Generated schedule for activated routine', { routineId, durationWeeks });
+        }
+      } catch (scheduleError) {
+        // 일정 생성 실패는 로깅만 하고 계속 진행
+        logger.warn('Failed to generate schedule for routine', {
+          routineId,
+          error: scheduleError instanceof Error ? scheduleError.message : String(scheduleError)
+        });
       }
 
       // 구글 캘린더 연동된 경우 새 루틴의 이벤트 생성

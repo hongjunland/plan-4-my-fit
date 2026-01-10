@@ -132,6 +132,8 @@ src/services/
 ├── routines.ts            # 루틴 API
 ├── ai.ts                  # AI 루틴 생성
 ├── progressStats.ts       # 진행률 계산
+├── scheduledWorkouts.ts   # 날짜별 운동 일정 관리
+├── googleCalendar.ts      # 구글 캘린더 연동
 └── index.ts
 ```
 
@@ -255,10 +257,24 @@ supabase/
 ├── migrations/            # 데이터베이스 마이그레이션
 │   ├── 001_initial_setup.sql
 │   ├── 002_add_workouts_exercises_tables.sql
-│   └── 003_normalize_routine_structure.sql
+│   ├── 003_normalize_routine_structure.sql
+│   ├── 004_google_calendar_integration.sql
+│   └── 005_scheduled_workouts.sql  # 날짜별 운동 일정
+├── functions/             # Edge Functions
+│   └── google-calendar-events/  # 구글 캘린더 이벤트 API
 ├── seed.sql               # 초기 데이터
 └── debug_rls.sql          # RLS 디버깅
 ```
+
+### 주요 테이블
+- **profiles**: 사용자 프로필 정보
+- **routines**: 운동 루틴 정보
+- **workouts**: 워크아웃 (Day 1, Day 2 등)
+- **exercises**: 개별 운동 항목
+- **workout_logs**: 운동 완료 기록
+- **scheduled_workouts**: 날짜별 운동 일정 (NEW)
+- **google_calendar_tokens**: 구글 캘린더 연동 토큰
+- **calendar_event_mappings**: 캘린더 이벤트 매핑
 
 ---
 

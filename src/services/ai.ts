@@ -123,10 +123,50 @@ const fitnessLevelDescriptions = {
   advanced: '상급자 - 고강도 운동, 복합 동작'
 };
 
+// 분할 방식별 워크아웃 구성 규칙
+const splitTypeRules: Record<string, { description: string; workoutNames: (count: number) => string[] }> = {
+  full_body: {
+    description: '전신 운동 - 매 운동일마다 전신을 골고루 운동',
+    workoutNames: (count: number) => Array.from({ length: count }, (_, i) => `Day ${i + 1} - 전신`)
+  },
+  upper_lower: {
+    description: '상체/하체 분할 - 상체와 하체를 번갈아 운동',
+    workoutNames: (count: number) => {
+      if (count === 2) return ['Day 1 - 상체', 'Day 2 - 하체'];
+      if (count === 3) return ['Day 1 - 상체', 'Day 2 - 하체', 'Day 3 - 상체'];
+      if (count === 4) return ['Day 1 - 상체', 'Day 2 - 하체', 'Day 3 - 상체', 'Day 4 - 하체'];
+      if (count === 5) return ['Day 1 - 상체', 'Day 2 - 하체', 'Day 3 - 상체', 'Day 4 - 하체', 'Day 5 - 상체'];
+      return ['Day 1 - 상체', 'Day 2 - 하체', 'Day 3 - 상체', 'Day 4 - 하체', 'Day 5 - 상체', 'Day 6 - 하체'];
+    }
+  },
+  push_pull_legs: {
+    description: '푸쉬/풀/레그 분할 - 밀기(가슴,어깨,삼두)/당기기(등,이두)/다리로 분할',
+    workoutNames: (count: number) => {
+      if (count === 3) return ['Day 1 - 푸쉬 (가슴/어깨/삼두)', 'Day 2 - 풀 (등/이두)', 'Day 3 - 레그 (하체)'];
+      if (count === 4) return ['Day 1 - 푸쉬', 'Day 2 - 풀', 'Day 3 - 레그', 'Day 4 - 상체'];
+      if (count === 5) return ['Day 1 - 푸쉬', 'Day 2 - 풀', 'Day 3 - 레그', 'Day 4 - 푸쉬', 'Day 5 - 풀'];
+      return ['Day 1 - 푸쉬', 'Day 2 - 풀', 'Day 3 - 레그', 'Day 4 - 푸쉬', 'Day 5 - 풀', 'Day 6 - 레그'];
+    }
+  }
+};
+
 // 시스템 프롬프트 생성
 function createSystemPrompt(): string {
   return `당신은 전문 피트니스 트레이너입니다.
 사용자의 상세한 정보를 바탕으로 맞춤형 운동 루틴을 생성하세요.
+
+⚠️ 가장 중요한 규칙 (반드시 준수):
+1. workouts 배열의 길이는 반드시 "주당 운동 횟수"와 정확히 일치해야 합니다.
+   - 주 2회 → workouts 배열에 정확히 2개의 워크아웃
+   - 주 3회 → workouts 배열에 정확히 3개의 워크아웃
+   - 주 4회 → workouts 배열에 정확히 4개의 워크아웃
+   - 주 5회 → workouts 배열에 정확히 5개의 워크아웃
+   - 주 6회 → workouts 배열에 정확히 6개의 워크아웃
+
+2. 분할 방식에 따른 워크아웃 구성:
+   - full_body (전신): 매일 전신 운동
+   - upper_lower (상체/하체): 상체와 하체를 번갈아 구성
+   - push_pull_legs (푸쉬/풀/레그): 밀기/당기기/다리로 분할
 
 사용자 정보 분석 원칙:
 1. 연령/성별에 따른 운동 강도 조절
@@ -135,7 +175,6 @@ function createSystemPrompt(): string {
 4. 운동 목표와 초점 부위 우선 반영
 5. 불편한 부위는 절대 무리하지 않는 운동 구성
 6. 기존 운동 경력 기반 중량/강도 설정
-7. 주간 운동 횟수에 맞는 효율적인 분할 방식
 
 안전 규칙 (필수 준수):
 - 불편한 부위가 있으면 해당 부위에 부담을 주는 운동은 절대 포함하지 않음
@@ -160,7 +199,7 @@ ${Object.entries(equipmentByLocation).map(([key, value]) => `- ${key}: ${value}`
   "workouts": [
     {
       "dayNumber": 1,
-      "name": "Day 1 - 상체 집중",
+      "name": "Day 1 - 상체",
       "exercises": [
         {
           "name": "벤치프레스",
@@ -168,7 +207,7 @@ ${Object.entries(equipmentByLocation).map(([key, value]) => `- ${key}: ${value}`
           "reps": "8-10",
           "muscleGroup": "chest",
           "description": "가슴 근육 발달을 위한 기본 운동",
-          "weight": "60kg (기존 경력 기준)" // 운동 경력이 있는 경우만
+          "weight": "60kg (기존 경력 기준)"
         }
       ]
     }
@@ -185,6 +224,10 @@ function createUserPrompt(profile: Profile, settings: RoutineSettings): string {
   const exerciseHistoryText = profile.exerciseHistory && profile.exerciseHistory.length > 0
     ? profile.exerciseHistory.map(ex => `${ex.exerciseName}: ${ex.maxWeight}kg x ${ex.reps}회`).join(', ')
     : '없음';
+
+  // 분할 방식에 따른 워크아웃 이름 생성
+  const splitRule = splitTypeRules[settings.splitType] || splitTypeRules.full_body;
+  const expectedWorkoutNames = splitRule.workoutNames(settings.workoutsPerWeek);
 
   return `
 사용자 기본 정보:
@@ -209,19 +252,23 @@ function createUserPrompt(profile: Profile, settings: RoutineSettings): string {
 플랜 설정:
 - 전체 플랜 기간: ${profile.planDuration}주
 
-루틴 생성 요청:
+⚠️ 루틴 생성 필수 조건 (반드시 준수):
 - 루틴 기간: ${settings.durationWeeks}주
-- 주당 운동 횟수: ${settings.workoutsPerWeek}회
-- 분할 방식: ${settings.splitType}
+- 주당 운동 횟수: ${settings.workoutsPerWeek}회 ← workouts 배열에 정확히 ${settings.workoutsPerWeek}개의 워크아웃만 생성!
+- 분할 방식: ${settings.splitType} (${splitRule.description})
 - 추가 요청사항: ${settings.additionalRequest || '없음'}
 
+📋 생성해야 할 워크아웃 목록 (정확히 ${settings.workoutsPerWeek}개):
+${expectedWorkoutNames.map((name, i) => `${i + 1}. ${name}`).join('\n')}
+
 위 정보를 바탕으로 안전하고 효과적인 맞춤형 운동 루틴을 생성해주세요.
+workouts 배열에는 반드시 ${settings.workoutsPerWeek}개의 워크아웃만 포함해야 합니다.
 특히 불편한 부위(${uncomfortableAreasText})는 절대 무리하지 않도록 주의해주세요.
   `;
 }
 
 // AI 응답 검증
-function validateAIResponse(response: any): AIRoutineResponse {
+function validateAIResponse(response: any, expectedWorkoutCount?: number): AIRoutineResponse {
   if (!response || typeof response !== 'object') {
     throw new AIServiceError(
       'AI 응답 형식이 올바르지 않습니다.',
@@ -241,6 +288,15 @@ function validateAIResponse(response: any): AIRoutineResponse {
       '운동 계획이 누락되었습니다.',
       'MISSING_WORKOUTS'
     );
+  }
+
+  // 워크아웃 개수 검증
+  if (expectedWorkoutCount && response.workouts.length !== expectedWorkoutCount) {
+    console.warn(`⚠️ 워크아웃 개수 불일치: 예상 ${expectedWorkoutCount}개, 실제 ${response.workouts.length}개`);
+    // 개수가 맞지 않으면 잘라내거나 에러 처리
+    if (response.workouts.length > expectedWorkoutCount) {
+      response.workouts = response.workouts.slice(0, expectedWorkoutCount);
+    }
   }
 
   // 각 운동일 검증
@@ -321,8 +377,8 @@ async function generateRoutine(profile: Profile, settings: RoutineSettings): Pro
           );
         }
 
-        // 응답 검증
-        const validatedResponse = validateAIResponse(aiResponse);
+        // 응답 검증 (워크아웃 개수 체크 포함)
+        const validatedResponse = validateAIResponse(aiResponse, settings.workoutsPerWeek);
         
         // AI 응답을 Routine 형태로 변환
         const routine: Routine = {

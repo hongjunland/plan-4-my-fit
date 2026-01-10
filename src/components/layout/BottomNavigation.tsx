@@ -15,11 +15,12 @@ interface BottomNavigationProps {
 }
 
 const BottomNavigation = ({ className }: BottomNavigationProps) => {
+  // 인스타그램 스타일 순서: 홈(캘린더) → 루틴 → 현황 → 마이(프로필)
   const navItems: NavItem[] = [
     {
-      path: ROUTES.MY,
-      icon: User,
-      label: '마이',
+      path: ROUTES.CALENDAR,
+      icon: Calendar,
+      label: '홈',
     },
     {
       path: ROUTES.ROUTINES,
@@ -27,14 +28,14 @@ const BottomNavigation = ({ className }: BottomNavigationProps) => {
       label: '루틴',
     },
     {
-      path: ROUTES.CALENDAR,
-      icon: Calendar,
-      label: '캘린더',
-    },
-    {
       path: ROUTES.PROGRESS,
       icon: BarChart3,
-      label: '진행',
+      label: '현황',
+    },
+    {
+      path: ROUTES.MY,
+      icon: User,
+      label: '마이',
     },
   ];
 

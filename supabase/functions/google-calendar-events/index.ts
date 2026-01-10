@@ -24,8 +24,8 @@ interface CalendarEvent {
   id?: string;
   summary: string;
   description: string;
-  start: { dateTime: string; timeZone: string };
-  end: { dateTime: string; timeZone: string };
+  start: { date: string };  // 종일 이벤트: YYYY-MM-DD 형식
+  end: { date: string };    // 종일 이벤트: YYYY-MM-DD 형식 (시작일 다음날)
   colorId?: string;
   reminders?: {
     useDefault: boolean;
@@ -58,18 +58,12 @@ interface RoutineData {
 interface CreateEventsRequest {
   routineId: string;
   startDate: string; // ISO date string (YYYY-MM-DD)
-  timeZone?: string;
-  defaultStartTime?: string; // HH:mm format, default "09:00"
-  durationMinutes?: number; // default 60
 }
 
 interface UpdateEventRequest {
   eventId: string;
   workout: WorkoutData;
   eventDate: string;
-  timeZone?: string;
-  startTime?: string;
-  durationMinutes?: number;
 }
 
 interface DeleteEventsRequest {

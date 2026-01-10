@@ -409,6 +409,64 @@ export interface Database {
           }
         ]
       }
+      scheduled_workouts: {
+        Row: {
+          id: string
+          routine_id: string
+          user_id: string
+          scheduled_date: string
+          workout_id: string | null
+          is_rest_day: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          routine_id: string
+          user_id: string
+          scheduled_date: string
+          workout_id?: string | null
+          is_rest_day?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          routine_id?: string
+          user_id?: string
+          scheduled_date?: string
+          workout_id?: string | null
+          is_rest_day?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_workouts_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_workouts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_workouts_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

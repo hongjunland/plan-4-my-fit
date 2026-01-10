@@ -32,10 +32,11 @@
 
 #### Acceptance Criteria
 
-1. WHEN 사용자가 루틴을 활성화하면 THE Google_Calendar_Service SHALL 해당 루틴의 모든 운동 일정을 구글 캘린더에 등록한다
-2. THE Calendar_Event SHALL 운동 이름, 운동 목록, 예상 소요 시간을 포함한다
-3. WHEN 일정 등록이 완료되면 THE Google_Calendar_Service SHALL 등록된 이벤트 ID를 Supabase에 저장한다
-4. IF 캘린더 등록이 실패하면 THEN THE Google_Calendar_Service SHALL 에러를 로깅하고 사용자에게 알린다
+1. WHEN 사용자가 루틴을 활성화하면 THE Google_Calendar_Service SHALL 해당 루틴의 모든 운동 일정을 구글 캘린더에 종일 이벤트로 등록한다
+2. THE Calendar_Event SHALL 운동 이름과 운동 목록을 포함한다
+3. THE Calendar_Event SHALL 시작/종료 시간 없이 날짜만 포함하는 종일 이벤트 형식이어야 한다
+4. WHEN 일정 등록이 완료되면 THE Google_Calendar_Service SHALL 등록된 이벤트 ID를 Supabase에 저장한다
+5. IF 캘린더 등록이 실패하면 THEN THE Google_Calendar_Service SHALL 에러를 로깅하고 사용자에게 알린다
 
 ### Requirement 3: 운동 일정 수정
 

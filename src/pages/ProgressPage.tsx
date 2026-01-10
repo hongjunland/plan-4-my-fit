@@ -1,11 +1,14 @@
 import React, { useEffect } from 'react';
 import useProgressStats from '../hooks/useProgressStats';
 import useWorkoutLogs from '../hooks/useWorkoutLogs';
+import { useActiveRoutine } from '../hooks/queries/useRoutines';
+import useAuth from '../hooks/useAuth';
 import ProgressStats from '../components/progress/ProgressStats';
 import MiniCalendar from '../components/progress/MiniCalendar';
 import MuscleGroupChart from '../components/progress/MuscleGroupChart';
 
 const ProgressPage = () => {
+  const { user } = useAuth();
   const { 
     progressStats, 
     routineProgress, 
@@ -16,18 +19,26 @@ const ProgressPage = () => {
   } = useProgressStats();
   
   const { getMonthlyLogs } = useWorkoutLogs();
+  const { data: activeRoutine } = useActiveRoutine(user?.id);
   const [monthlyLogs, setMonthlyLogs] = React.useState<any[]>([]);
 
-  // 현재 월의 운동 기록 가져오기
+  // 현재 월의 운동 기록 가져오기 (활성 루틴 기준)
   useEffect(() => {
     const fetchMonthlyLogs = async () => {
+      if (!activeRoutine) {
+        setMonthlyLogs([]);
+        return;
+      }
+      
       const now = new Date();
       const logs = await getMonthlyLogs(now.getFullYear(), now.getMonth() + 1);
-      setMonthlyLogs(logs);
+      // 활성 루틴의 운동 기록만 필터링
+      const filteredLogs = logs.filter(log => log.routine_id === activeRoutine.id);
+      setMonthlyLogs(filteredLogs);
     };
 
     fetchMonthlyLogs();
-  }, [getMonthlyLogs]);
+  }, [getMonthlyLogs, activeRoutine]);
 
   // 로딩 상태
   if (isLoading) {

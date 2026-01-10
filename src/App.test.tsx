@@ -11,10 +11,10 @@ describe('App', () => {
 
   it('renders the bottom navigation', () => {
     render(<App />);
-    // Check that bottom navigation items are present
-    expect(screen.getByText('마이')).toBeInTheDocument();
+    // Check that bottom navigation items are present (인스타그램 스타일 순서)
+    expect(screen.getByText('홈')).toBeInTheDocument();
     expect(screen.getByText('루틴')).toBeInTheDocument();
-    expect(screen.getByText('캘린더')).toBeInTheDocument();
-    expect(screen.getByText('진행')).toBeInTheDocument();
+    expect(screen.getByText('현황')).toBeInTheDocument();
+    expect(screen.getByText('마이')).toBeInTheDocument();
   });
 });

@@ -59,8 +59,8 @@ interface CalendarEvent {
   id?: string;
   summary: string;        // 운동 이름 (예: "Day 1: 가슴/삼두")
   description: string;    // 운동 목록
-  start: { dateTime: string; timeZone: string };
-  end: { dateTime: string; timeZone: string };
+  start: { date: string };  // 종일 이벤트: YYYY-MM-DD 형식
+  end: { date: string };    // 종일 이벤트: YYYY-MM-DD 형식 (시작일 다음날)
   colorId?: string;       // 캘린더 색상
   reminders?: {
     useDefault: boolean;
@@ -197,9 +197,9 @@ CREATE TABLE calendar_sync_status (
 
 ### Property 2: 이벤트 데이터 완전성
 
-*For any* 생성된 캘린더 이벤트, 운동 이름(summary), 운동 목록(description), 시작/종료 시간이 반드시 포함되어야 한다.
+*For any* 생성된 캘린더 이벤트, 운동 이름(summary), 운동 목록(description), 날짜(date)가 반드시 포함되어야 하고, 종일 이벤트 형식이어야 한다.
 
-**Validates: Requirements 2.2**
+**Validates: Requirements 2.2, 2.3**
 
 ### Property 3: 토큰 및 매핑 데이터 영속성
 

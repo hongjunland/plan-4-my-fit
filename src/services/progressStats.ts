@@ -30,9 +30,20 @@ export interface ProgressStats {
   streakDays: number;
 }
 
-// 주간 완료율 계산 (요구사항 7.1)
+// 주간 완료율 계산 (요구사항 7.1) - 활성 루틴 기준
 export const calculateWeeklyStats = async (userId: string): Promise<WeeklyStats> => {
   try {
+    // 활성 루틴 조회
+    const activeRoutine = await routineService.getActiveRoutine(userId);
+    if (!activeRoutine) {
+      return {
+        completionRate: 0,
+        completedWorkouts: 0,
+        totalWorkouts: 0,
+        weekDates: []
+      };
+    }
+
     // 이번 주 월요일부터 일요일까지의 날짜 계산
     const today = new Date();
     const currentDay = today.getDay(); // 0: 일요일, 1: 월요일, ...
@@ -51,7 +62,10 @@ export const calculateWeeklyStats = async (userId: string): Promise<WeeklyStats>
     // 주간 운동 기록 조회
     const startDate = weekDates[0];
     const endDate = weekDates[6];
-    const weeklyLogs = await workoutLogService.getWorkoutLogsByDateRange(userId, startDate, endDate);
+    const allLogs = await workoutLogService.getWorkoutLogsByDateRange(userId, startDate, endDate);
+    
+    // 활성 루틴의 운동 기록만 필터링
+    const weeklyLogs = allLogs.filter(log => log.routine_id === activeRoutine.id);
     
     // 완료된 운동 개수 계산
     const completedWorkouts = weeklyLogs.filter(log => log.is_completed).length;
@@ -75,15 +89,30 @@ export const calculateWeeklyStats = async (userId: string): Promise<WeeklyStats>
   }
 };
 
-// 월간 완료율 계산 (요구사항 7.2)
+// 월간 완료율 계산 (요구사항 7.2) - 활성 루틴 기준
 export const calculateMonthlyStats = async (userId: string, year?: number, month?: number): Promise<MonthlyStats> => {
   try {
+    // 활성 루틴 조회
+    const activeRoutine = await routineService.getActiveRoutine(userId);
+    if (!activeRoutine) {
+      return {
+        completionRate: 0,
+        completedWorkouts: 0,
+        totalWorkouts: 0,
+        streakDays: 0,
+        workoutDays: 0
+      };
+    }
+
     const now = new Date();
     const targetYear = year || now.getFullYear();
     const targetMonth = month || (now.getMonth() + 1);
     
     // 월간 운동 기록 조회
-    const monthlyLogs = await workoutLogService.getMonthlyLogs(userId, targetYear, targetMonth);
+    const allMonthlyLogs = await workoutLogService.getMonthlyLogs(userId, targetYear, targetMonth);
+    
+    // 활성 루틴의 운동 기록만 필터링
+    const monthlyLogs = allMonthlyLogs.filter(log => log.routine_id === activeRoutine.id);
     
     // 완료된 운동 개수 계산
     const completedWorkouts = monthlyLogs.filter(log => log.is_completed).length;
@@ -94,8 +123,8 @@ export const calculateMonthlyStats = async (userId: string, year?: number, month
     const workoutDates = new Set(monthlyLogs.map(log => log.date));
     const workoutDays = workoutDates.size;
     
-    // 연속 운동 일수 계산
-    const streakDays = await workoutLogService.getStreakDays(userId);
+    // 연속 운동 일수 계산 (활성 루틴 기준)
+    const streakDays = await calculateActiveRoutineStreakDays(userId, activeRoutine.id);
     
     return {
       completionRate,
@@ -116,35 +145,103 @@ export const calculateMonthlyStats = async (userId: string, year?: number, month
   }
 };
 
-// 연속 운동 일수 계산 (요구사항 7.3)
+// 연속 운동 일수 계산 (요구사항 7.3) - 활성 루틴 기준
 export const calculateStreakDays = async (userId: string): Promise<number> => {
   try {
-    return await workoutLogService.getStreakDays(userId);
+    // 활성 루틴 조회
+    const activeRoutine = await routineService.getActiveRoutine(userId);
+    if (!activeRoutine) {
+      return 0;
+    }
+    return await calculateActiveRoutineStreakDays(userId, activeRoutine.id);
   } catch (error) {
     console.error('Error calculating streak days:', error);
     return 0;
   }
 };
 
-// 근육 그룹별 운동 빈도 분석 (요구사항 7.3)
-export const calculateMuscleGroupStats = async (userId: string, days: number = 30): Promise<MuscleGroupStats[]> => {
+// 활성 루틴 기준 연속 운동 일수 계산 헬퍼 함수
+const calculateActiveRoutineStreakDays = async (userId: string, routineId: string): Promise<number> => {
   try {
-    // 지난 N일간의 운동 기록 조회
+    // 최근 60일간의 운동 기록 조회
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
+    startDate.setDate(endDate.getDate() - 60);
     
-    const logs = await workoutLogService.getWorkoutLogsByDateRange(
+    const allLogs = await workoutLogService.getWorkoutLogsByDateRange(
       userId,
       startDate.toISOString().split('T')[0],
       endDate.toISOString().split('T')[0]
     );
     
+    // 활성 루틴의 완료된 운동 기록만 필터링
+    const completedLogs = allLogs
+      .filter(log => log.routine_id === routineId && log.is_completed)
+      .map(log => log.date)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime()); // 최신순 정렬
+    
+    if (completedLogs.length === 0) {
+      return 0;
+    }
+    
+    // 연속 일수 계산
+    let streakDays = 0;
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    // 오늘 또는 어제 운동했는지 확인
+    if (completedLogs[0] !== today && completedLogs[0] !== yesterday) {
+      return 0; // 연속 기록 끊김
+    }
+    
+    // 연속 일수 계산
+    const uniqueDates = [...new Set(completedLogs)];
+    for (let i = 0; i < uniqueDates.length; i++) {
+      const currentDate = new Date(uniqueDates[i]);
+      const expectedDate = new Date(today);
+      expectedDate.setDate(expectedDate.getDate() - i);
+      
+      // 하루 차이까지 허용 (운동 쉬는 날 고려)
+      const diffDays = Math.abs(
+        Math.floor((expectedDate.getTime() - currentDate.getTime()) / (24 * 60 * 60 * 1000))
+      );
+      
+      if (diffDays <= 1) {
+        streakDays++;
+      } else {
+        break;
+      }
+    }
+    
+    return streakDays;
+  } catch (error) {
+    console.error('Error calculating active routine streak days:', error);
+    return 0;
+  }
+};
+
+// 근육 그룹별 운동 빈도 분석 (요구사항 7.3) - 활성 루틴 기준
+export const calculateMuscleGroupStats = async (userId: string, days: number = 30): Promise<MuscleGroupStats[]> => {
+  try {
     // 활성 루틴 조회하여 운동별 근육 그룹 정보 가져오기
     const activeRoutine = await routineService.getActiveRoutine(userId);
     if (!activeRoutine) {
       return [];
     }
+
+    // 지난 N일간의 운동 기록 조회
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+    
+    const allLogs = await workoutLogService.getWorkoutLogsByDateRange(
+      userId,
+      startDate.toISOString().split('T')[0],
+      endDate.toISOString().split('T')[0]
+    );
+    
+    // 활성 루틴의 운동 기록만 필터링
+    const logs = allLogs.filter(log => log.routine_id === activeRoutine.id);
     
     // 근육 그룹별 빈도 계산
     const muscleGroupCount: Record<MuscleGroup, number> = {
