@@ -268,7 +268,7 @@ export const calculateMuscleGroupStats = async (userId: string, days: number = 3
             workout.exercises.forEach((exercise: any) => {
               if (completedExercises.includes(exercise.id)) {
                 const muscleGroup = exercise.muscleGroup as MuscleGroup;
-                if (muscleGroup && muscleGroupCount.hasOwnProperty(muscleGroup)) {
+                if (muscleGroup && Object.prototype.hasOwnProperty.call(muscleGroupCount, muscleGroup)) {
                   muscleGroupCount[muscleGroup]++;
                   totalExercises++;
                 }

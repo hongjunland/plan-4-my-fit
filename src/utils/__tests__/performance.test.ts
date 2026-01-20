@@ -83,7 +83,7 @@ describe('Performance Utilities', () => {
 
     it('should handle missing performance API gracefully', () => {
       const originalPerformance = global.performance;
-      // @ts-ignore
+      // @ts-expect-error - intentionally setting to undefined for testing
       global.performance = undefined;
 
       expect(() => {
@@ -157,7 +157,7 @@ describe('Performance Utilities', () => {
 
     it('should return null when performance API is not available', () => {
       const originalPerformance = global.performance;
-      // @ts-ignore
+      // @ts-expect-error - intentionally setting to undefined for testing
       global.performance = undefined;
 
       const result = analyzeBundleSize();

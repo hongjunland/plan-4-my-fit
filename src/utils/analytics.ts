@@ -10,8 +10,8 @@ import { logger } from './logger';
 export interface AnalyticsEvent {
   // User actions
   'user_login': { method: 'google' };
-  'user_logout': {};
-  'profile_setup_started': {};
+  'user_logout': Record<string, never>;
+  'profile_setup_started': Record<string, never>;
   'profile_setup_completed': { steps_completed: number };
   
   // Routine actions

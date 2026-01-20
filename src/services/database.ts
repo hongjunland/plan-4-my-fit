@@ -874,9 +874,10 @@ export const workoutLogService = {
       const today = new Date();
       let streakDays = 0;
       let currentDate = new Date(today);
+      let hasMoreDays = true;
       
       // 오늘부터 거꾸로 확인하면서 연속 운동 일수 계산
-      while (true) {
+      while (hasMoreDays && streakDays < 365) {
         const dateStr = currentDate.toISOString().split('T')[0];
         const logs = await this.getWorkoutLogsByDate(userId, dateStr);
         
@@ -886,11 +887,8 @@ export const workoutLogService = {
           streakDays++;
           currentDate.setDate(currentDate.getDate() - 1);
         } else {
-          break;
+          hasMoreDays = false;
         }
-        
-        // 무한 루프 방지 (최대 365일)
-        if (streakDays >= 365) break;
       }
       
       return streakDays;
