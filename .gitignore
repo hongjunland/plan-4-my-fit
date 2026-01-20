@@ -242,3 +242,5 @@ build-storybook.log
 
 # Nx
 .nx/cache
+# Playwright MCP screenshots
+.playwright-mcp/

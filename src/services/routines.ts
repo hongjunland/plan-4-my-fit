@@ -43,45 +43,75 @@ class RoutinesService {
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5분
 
   /**
-   * 사용자의 모든 루틴 조회
+   * 사용자의 모든 루틴 조회 (단일 쿼리로 최적화)
    */
   async getUserRoutines(userId: string): Promise<RoutineWithDetails[]> {
     try {
-      // 루틴 기본 정보 조회
-      const { data: routines, error: routinesError } = await supabase
+      // 루틴 + 워크아웃 + 운동을 단일 nested select로 조회
+      const { data: routinesData, error } = await supabase
         .from('routines')
-        .select('*')
+        .select(`
+          id,
+          user_id,
+          name,
+          settings,
+          is_active,
+          created_at,
+          updated_at,
+          workouts (
+            id,
+            day_number,
+            name,
+            exercises (
+              id,
+              name,
+              sets,
+              reps,
+              muscle_group,
+              description,
+              order_index
+            )
+          )
+        `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (routinesError) {
-        console.error('루틴 조회 오류:', routinesError);
-        throw routinesError;
+      if (error) {
+        console.error('루틴 조회 오류:', error);
+        throw error;
       }
 
-      if (!routines || routines.length === 0) {
+      if (!routinesData || routinesData.length === 0) {
         return [];
       }
 
-      // 각 루틴의 워크아웃과 운동 정보 조회
-      const routinesWithDetails = await Promise.all(
-        routines.map(async (routine) => {
-          const workouts = await this.getRoutineWorkouts(routine.id);
-          
-          return {
-            id: routine.id,
-            userId: routine.user_id,
-            name: routine.name,
-            settings: routine.settings as unknown as RoutineSettings,
-            workouts,
-            isActive: routine.is_active,
-            createdAt: new Date(routine.created_at),
-            updatedAt: new Date(routine.updated_at),
-          };
-        })
-      );
-
-      return routinesWithDetails;
+      // 데이터 변환
+      return routinesData.map(routine => ({
+        id: routine.id,
+        userId: routine.user_id,
+        name: routine.name,
+        settings: routine.settings as unknown as RoutineSettings,
+        workouts: (routine.workouts || [])
+          .sort((a, b) => a.day_number - b.day_number)
+          .map(workout => ({
+            id: workout.id,
+            dayNumber: workout.day_number,
+            name: workout.name,
+            exercises: (workout.exercises || [])
+              .sort((a, b) => a.order_index - b.order_index)
+              .map(exercise => ({
+                id: exercise.id,
+                name: exercise.name,
+                sets: exercise.sets,
+                reps: exercise.reps,
+                muscleGroup: exercise.muscle_group,
+                description: exercise.description || undefined,
+              })),
+          })),
+        isActive: routine.is_active,
+        createdAt: new Date(routine.created_at),
+        updatedAt: new Date(routine.updated_at),
+      }));
     } catch (error) {
       console.error('루틴 목록 조회 실패:', error);
       throw error;
@@ -89,12 +119,12 @@ class RoutinesService {
   }
 
   /**
-   * 활성 루틴 조회 (캐싱 포함)
+   * 활성 루틴 조회 (캐싱 포함, 단일 쿼리로 최적화)
    */
   async getActiveRoutine(userId: string, useCache = true): Promise<RoutineWithDetails | null> {
     try {
       // 캐시 확인
-      if (useCache && this.activeRoutineCache && 
+      if (useCache && this.activeRoutineCache &&
           this.activeRoutineCache.userId === userId &&
           (Date.now() - this.activeRoutineCache.timestamp) < this.CACHE_DURATION) {
         if (process.env.NODE_ENV === 'development') {
@@ -106,11 +136,33 @@ class RoutinesService {
       if (process.env.NODE_ENV === 'development') {
         logger.debug('활성 루틴 조회 시작', { userId });
       }
-      
-      // .single() 대신 배열로 조회하여 406 오류 방지
-      const { data: routines, error } = await supabase
+
+      // 단일 nested select로 루틴 + 워크아웃 + 운동 조회
+      const { data: routinesData, error } = await supabase
         .from('routines')
-        .select('*')
+        .select(`
+          id,
+          user_id,
+          name,
+          settings,
+          is_active,
+          created_at,
+          updated_at,
+          workouts (
+            id,
+            day_number,
+            name,
+            exercises (
+              id,
+              name,
+              sets,
+              reps,
+              muscle_group,
+              description,
+              order_index
+            )
+          )
+        `)
         .eq('user_id', userId)
         .eq('is_active', true)
         .limit(1);
@@ -123,11 +175,10 @@ class RoutinesService {
       }
 
       // 결과가 없으면 null 반환
-      if (!routines || routines.length === 0) {
+      if (!routinesData || routinesData.length === 0) {
         if (process.env.NODE_ENV === 'development') {
           logger.debug('활성 루틴이 없음');
         }
-        // 캐시 업데이트
         this.activeRoutineCache = {
           userId,
           routine: null,
@@ -136,15 +187,29 @@ class RoutinesService {
         return null;
       }
 
-      const routine = routines[0];
-      const workouts = await this.getRoutineWorkouts(routine.id);
-
+      const routine = routinesData[0];
       const result = {
         id: routine.id,
         userId: routine.user_id,
         name: routine.name,
         settings: routine.settings as unknown as RoutineSettings,
-        workouts,
+        workouts: (routine.workouts || [])
+          .sort((a, b) => a.day_number - b.day_number)
+          .map(workout => ({
+            id: workout.id,
+            dayNumber: workout.day_number,
+            name: workout.name,
+            exercises: (workout.exercises || [])
+              .sort((a, b) => a.order_index - b.order_index)
+              .map(exercise => ({
+                id: exercise.id,
+                name: exercise.name,
+                sets: exercise.sets,
+                reps: exercise.reps,
+                muscleGroup: exercise.muscle_group,
+                description: exercise.description || undefined,
+              })),
+          })),
         isActive: routine.is_active,
         createdAt: new Date(routine.created_at),
         updatedAt: new Date(routine.updated_at),
@@ -176,14 +241,36 @@ class RoutinesService {
   }
 
   /**
-   * 특정 루틴 조회
+   * 특정 루틴 조회 (단일 쿼리로 최적화)
    */
   async getRoutine(routineId: string): Promise<RoutineWithDetails | null> {
     try {
-      // .single() 대신 배열로 조회하여 406 오류 방지
-      const { data: routines, error } = await supabase
+      // 단일 nested select로 루틴 + 워크아웃 + 운동 조회
+      const { data: routinesData, error } = await supabase
         .from('routines')
-        .select('*')
+        .select(`
+          id,
+          user_id,
+          name,
+          settings,
+          is_active,
+          created_at,
+          updated_at,
+          workouts (
+            id,
+            day_number,
+            name,
+            exercises (
+              id,
+              name,
+              sets,
+              reps,
+              muscle_group,
+              description,
+              order_index
+            )
+          )
+        `)
         .eq('id', routineId)
         .limit(1);
 
@@ -192,19 +279,33 @@ class RoutinesService {
         throw error;
       }
 
-      if (!routines || routines.length === 0) {
+      if (!routinesData || routinesData.length === 0) {
         return null;
       }
 
-      const routine = routines[0];
-      const workouts = await this.getRoutineWorkouts(routine.id);
-
+      const routine = routinesData[0];
       return {
         id: routine.id,
         userId: routine.user_id,
         name: routine.name,
         settings: routine.settings as unknown as RoutineSettings,
-        workouts,
+        workouts: (routine.workouts || [])
+          .sort((a, b) => a.day_number - b.day_number)
+          .map(workout => ({
+            id: workout.id,
+            dayNumber: workout.day_number,
+            name: workout.name,
+            exercises: (workout.exercises || [])
+              .sort((a, b) => a.order_index - b.order_index)
+              .map(exercise => ({
+                id: exercise.id,
+                name: exercise.name,
+                sets: exercise.sets,
+                reps: exercise.reps,
+                muscleGroup: exercise.muscle_group,
+                description: exercise.description || undefined,
+              })),
+          })),
         isActive: routine.is_active,
         createdAt: new Date(routine.created_at),
         updatedAt: new Date(routine.updated_at),
@@ -216,57 +317,54 @@ class RoutinesService {
   }
 
   /**
-   * 루틴의 워크아웃과 운동 정보 조회
+   * 루틴의 워크아웃과 운동 정보 조회 (단일 쿼리로 최적화)
    */
   private async getRoutineWorkouts(routineId: string): Promise<WorkoutWithExercises[]> {
     try {
-      // 워크아웃 조회
-      const { data: workouts, error: workoutsError } = await supabase
+      // nested select로 워크아웃 + 운동을 한 번에 조회 (N+1 문제 해결)
+      const { data: workoutsData, error } = await supabase
         .from('workouts')
-        .select('*')
+        .select(`
+          id,
+          day_number,
+          name,
+          exercises (
+            id,
+            name,
+            sets,
+            reps,
+            muscle_group,
+            description,
+            order_index
+          )
+        `)
         .eq('routine_id', routineId)
         .order('day_number', { ascending: true });
 
-      if (workoutsError) {
-        console.error('워크아웃 조회 오류:', workoutsError);
-        throw workoutsError;
+      if (error) {
+        console.error('워크아웃 조회 오류:', error);
+        throw error;
       }
 
-      if (!workouts || workouts.length === 0) {
+      if (!workoutsData || workoutsData.length === 0) {
         return [];
       }
 
-      // 각 워크아웃의 운동 정보 조회
-      const workoutsWithExercises = await Promise.all(
-        workouts.map(async (workout) => {
-          const { data: exercises, error: exercisesError } = await supabase
-            .from('exercises')
-            .select('*')
-            .eq('workout_id', workout.id)
-            .order('order_index', { ascending: true });
-
-          if (exercisesError) {
-            console.error('운동 조회 오류:', exercisesError);
-            throw exercisesError;
-          }
-
-          return {
-            id: workout.id,
-            dayNumber: workout.day_number,
-            name: workout.name,
-            exercises: (exercises || []).map(exercise => ({
-              id: exercise.id,
-              name: exercise.name,
-              sets: exercise.sets,
-              reps: exercise.reps,
-              muscleGroup: exercise.muscle_group,
-              description: exercise.description || undefined,
-            })),
-          };
-        })
-      );
-
-      return workoutsWithExercises;
+      return workoutsData.map(workout => ({
+        id: workout.id,
+        dayNumber: workout.day_number,
+        name: workout.name,
+        exercises: (workout.exercises || [])
+          .sort((a, b) => a.order_index - b.order_index)
+          .map(exercise => ({
+            id: exercise.id,
+            name: exercise.name,
+            sets: exercise.sets,
+            reps: exercise.reps,
+            muscleGroup: exercise.muscle_group,
+            description: exercise.description || undefined,
+          })),
+      }));
     } catch (error) {
       console.error('워크아웃 조회 실패:', error);
       throw error;
