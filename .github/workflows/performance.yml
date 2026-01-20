@@ -39,11 +39,6 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_OPENAI_API_KEY: ${{ secrets.VITE_OPENAI_API_KEY }}
           
-      - name: Serve application
-        run: |
-          pnpm preview &
-          sleep 10
-          
       - name: Run Lighthouse CI
         run: |
           npm install -g @lhci/cli@0.12.x

@@ -1,13 +1,13 @@
 module.exports = {
   ci: {
     collect: {
-      url: ['http://localhost:5173'],
-      startServerCommand: 'pnpm dev',
-      startServerReadyPattern: 'Local:.*:5173',
+      url: ['http://localhost:4173'],
+      startServerCommand: 'pnpm preview',
+      startServerReadyPattern: 'Local:.*:4173',
       startServerReadyTimeout: 30000,
       numberOfRuns: 3,
       settings: {
-        chromeFlags: '--no-sandbox --headless',
+        chromeFlags: '--no-sandbox --headless --disable-gpu --disable-dev-shm-usage',
       },
     },
     assert: {
