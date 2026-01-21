@@ -30,11 +30,18 @@ const LoginPage = () => {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+          <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center mx-auto mb-4 p-2 shadow-md border border-gray-100">
+            <img
+              src="/logo.png"
+              alt="Plan4MyFit logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-1">Plan4MyFit</h2>
           <p className="text-gray-500">로딩 중...</p>
+          <div className="mt-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent mx-auto"></div>
+          </div>
         </div>
       </div>
     );
@@ -49,20 +56,12 @@ const LoginPage = () => {
           <div className="absolute inset-0 bg-black/10"></div>
           <div className="relative z-10 px-12 text-white text-center max-w-md">
             <div className="mb-12">
-              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-8">
-                <svg
-                  className="w-8 h-8 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
+              <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center mx-auto mb-8 p-3 shadow-lg">
+                <img
+                  src="/logo.png"
+                  alt="Plan4MyFit logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <h1 className="text-4xl font-bold mb-6">Plan4MyFit</h1>
               <p className="text-xl text-blue-100 leading-relaxed mb-8">
@@ -157,22 +156,12 @@ const LoginPage = () => {
       <div className="lg:hidden min-h-screen flex flex-col">
         {/* 상단 브랜딩 영역 - 모바일 최적화 */}
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-6 py-12 text-white text-center">
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <svg
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              role="img"
-              aria-label="Plan4MyFit logo"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
+          <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 p-2 shadow-lg">
+            <img
+              src="/logo.png"
+              alt="Plan4MyFit logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           <h1 className="text-3xl font-bold mb-3">Plan4MyFit</h1>
           <p className="text-blue-100 text-lg">
