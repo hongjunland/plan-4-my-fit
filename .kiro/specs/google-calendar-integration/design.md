@@ -83,6 +83,10 @@ interface GoogleCalendarService {
   updateEvent(userId: string, eventId: string, event: CalendarEvent): Promise<void>;
   deleteEvents(userId: string, eventIds: string[]): Promise<void>;
   
+  // 완료 상태 동기화
+  markEventCompleted(userId: string, eventId: string): Promise<void>;
+  markEventIncomplete(userId: string, eventId: string): Promise<void>;
+  
   // 동기화
   syncRoutine(userId: string, routineId: string): Promise<void>;
   syncAllRoutines(userId: string): Promise<void>;
@@ -207,6 +211,12 @@ CREATE TABLE calendar_sync_status (
 
 **Validates: Requirements 1.3, 2.3, 4.3, 5.4**
 
+### Property 4: 완료 상태 동기화 일관성
+
+*For any* 운동 완료 상태 변경, 앱의 완료 상태와 구글 캘린더 이벤트의 완료 표시(✅ + 녹색)가 일치해야 한다. 완료 체크 시 이벤트에 완료 표시가 추가되고, 해제 시 제거되어야 한다.
+
+**Validates: Requirements 7.1, 7.2, 7.3, 7.4**
+
 ## Error Handling
 
 | 에러 상황 | 처리 방법 |
@@ -216,6 +226,41 @@ CREATE TABLE calendar_sync_status (
 | API 할당량 초과 | 지수 백오프로 재시도, 사용자에게 알림 |
 | 이벤트 생성 실패 | 개별 이벤트 재시도, 실패 로깅 |
 | 네트워크 오류 | 재시도 큐에 추가, 오프라인 상태 표시 |
+| 완료 상태 동기화 실패 | 로컬 상태 유지, 백그라운드 재시도 |
+
+## Completion Status Sync
+
+### 완료 표시 방식
+- **제목**: 기존 제목 앞에 `✅ ` 추가 (예: `✅ Day 1: 가슴/삼두`)
+- **색상**: Google Calendar colorId `10` (녹색/Basil)
+- **미완료 시**: 제목에서 `✅ ` 제거, 색상을 기본값으로 복원
+
+### 매핑 키 체계
+```
+앱 운동 식별: routine_id + workout_id + date
+     ↓ (calendar_event_mappings 테이블)
+캘린더 이벤트: google_event_id
+```
+
+### 완료 동기화 플로우
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as App
+    participant DB as Supabase
+    participant EF as Edge Function
+    participant GC as Google Calendar
+    
+    U->>A: 운동 완료 체크
+    A->>DB: workout_logs.is_completed = true
+    A->>DB: calendar_event_mappings 조회
+    DB->>A: google_event_id 반환
+    A->>EF: PATCH /events/:id/complete
+    EF->>GC: 이벤트 업데이트 (✅ + 녹색)
+    GC->>EF: 성공
+    EF->>A: 완료
+    A->>U: UI 업데이트
+```
 
 ## Testing Strategy
 

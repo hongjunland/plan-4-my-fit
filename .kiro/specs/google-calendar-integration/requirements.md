@@ -80,3 +80,16 @@
 2. THE Calendar_Settings_Page SHALL 마지막 동기화 시간을 표시한다
 3. THE Calendar_Settings_Page SHALL 수동 동기화 버튼을 제공한다
 4. WHEN 사용자가 수동 동기화를 요청하면 THE Google_Calendar_Service SHALL 모든 활성 루틴의 일정을 다시 동기화한다
+
+### Requirement 7: 운동 완료 상태 동기화
+
+**User Story:** As a 사용자, I want to 운동 완료 체크 시 구글 캘린더에도 반영되길 원한다, so that 캘린더에서도 완료된 운동을 한눈에 확인할 수 있다.
+
+#### Acceptance Criteria
+
+1. WHEN 사용자가 운동을 완료 체크하면 THE Google_Calendar_Service SHALL 해당 캘린더 이벤트의 제목에 ✅ 표시를 추가한다
+2. WHEN 사용자가 운동을 완료 체크하면 THE Google_Calendar_Service SHALL 해당 캘린더 이벤트의 색상을 완료 색상(녹색, colorId: 10)으로 변경한다
+3. WHEN 사용자가 완료 체크를 해제하면 THE Google_Calendar_Service SHALL 해당 캘린더 이벤트의 제목에서 ✅ 표시를 제거한다
+4. WHEN 사용자가 완료 체크를 해제하면 THE Google_Calendar_Service SHALL 해당 캘린더 이벤트의 색상을 기본 색상으로 복원한다
+5. THE calendar_event_mappings TABLE SHALL routine_id + workout_id + event_date 조합으로 앱의 운동과 캘린더 이벤트를 매핑한다
+6. IF 캘린더 이벤트 업데이트가 실패하면 THEN THE Google_Calendar_Service SHALL 에러를 로깅하고 로컬 완료 상태는 유지한다

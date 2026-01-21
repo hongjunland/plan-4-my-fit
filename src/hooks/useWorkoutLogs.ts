@@ -1,6 +1,13 @@
 import { useState, useCallback } from 'react';
 import { workoutLogService } from '../services/database';
 import useAuth from './useAuth';
+import { 
+  getConnectionStatus, 
+  getEventMapping, 
+  markEventCompleted, 
+  markEventIncomplete 
+} from '../services/googleCalendar';
+import { logger } from '../utils/logger';
 import type { Database } from '../types/database';
 
 type WorkoutLog = Database['public']['Tables']['workout_logs']['Row'];
@@ -98,6 +105,61 @@ const useWorkoutLogs = () => {
     }
   }, [user]);
 
+  // 구글 캘린더 완료 상태 동기화 (Requirements 7.1, 7.2, 7.3, 7.4, 7.6)
+  const syncCalendarCompletionStatus = useCallback(async (
+    routineId: string,
+    workoutId: string,
+    date: string,
+    isCompleted: boolean
+  ) => {
+    try {
+      // 구글 캘린더 연동 상태 확인
+      const connectionStatus = await getConnectionStatus();
+      if (!connectionStatus.isConnected || connectionStatus.isTokenExpired) {
+        logger.debug('Google Calendar not connected, skipping sync', { routineId, workoutId, date });
+        return;
+      }
+
+      // 이벤트 매핑 조회 (Requirement 7.5)
+      const eventMapping = await getEventMapping(routineId, workoutId, date);
+      if (!eventMapping) {
+        logger.debug('No calendar event mapping found', { routineId, workoutId, date });
+        return;
+      }
+
+      // 캘린더 이벤트 업데이트
+      if (isCompleted) {
+        // 완료 체크 시 markEventCompleted() 호출 (Requirements 7.1, 7.2)
+        await markEventCompleted(eventMapping.googleEventId);
+        logger.info('Calendar event marked as completed', { 
+          eventId: eventMapping.googleEventId,
+          routineId,
+          workoutId,
+          date
+        });
+      } else {
+        // 완료 해제 시 markEventIncomplete() 호출 (Requirements 7.3, 7.4)
+        await markEventIncomplete(eventMapping.googleEventId);
+        logger.info('Calendar event marked as incomplete', { 
+          eventId: eventMapping.googleEventId,
+          routineId,
+          workoutId,
+          date
+        });
+      }
+    } catch (err) {
+      // Requirement 7.6: 캘린더 동기화 실패 시 로컬 상태 유지, 에러 로깅
+      const errorObj = err instanceof Error ? err : new Error(String(err));
+      logger.error('Failed to sync calendar completion status', errorObj, {
+        routineId,
+        workoutId,
+        date,
+        isCompleted
+      });
+      // 에러가 발생해도 로컬 상태는 이미 업데이트되었으므로 사용자에게 영향 없음
+    }
+  }, []);
+
   // 운동 완료 체크/언체크
   const toggleExerciseCompletion = useCallback(async (
     routineId: string,
@@ -111,6 +173,17 @@ const useWorkoutLogs = () => {
     try {
       setIsLoading(true);
       setError(null);
+      
+      // 먼저 현재 완료 상태를 확인하기 위해 기존 로그 조회
+      const existingLog = logs.find(
+        log => log.routine_id === routineId &&
+               log.workout_id === workoutId &&
+               log.date === date
+      );
+      const completedExercises = (existingLog?.completed_exercises as string[]) || [];
+      const wasCompleted = completedExercises.includes(exerciseId);
+      
+      // 로컬 상태 업데이트 (DB 저장)
       const updatedLog = await workoutLogService.toggleExerciseCompletion(
         user.id,
         routineId,
@@ -137,6 +210,15 @@ const useWorkoutLogs = () => {
         }
       });
 
+      // 구글 캘린더 동기화 (비동기, 실패해도 로컬 상태 유지)
+      // Requirements 7.1, 7.2, 7.3, 7.4
+      syncCalendarCompletionStatus(
+        routineId,
+        workoutId,
+        date,
+        !wasCompleted // 토글 후 상태: 이전에 완료 안됐으면 이제 완료됨
+      );
+
       return updatedLog;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '운동 완료 상태 변경 중 오류가 발생했습니다';
@@ -145,7 +227,7 @@ const useWorkoutLogs = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, logs, syncCalendarCompletionStatus]);
 
   // 운동 전체 완료 처리
   const completeWorkout = useCallback(async (

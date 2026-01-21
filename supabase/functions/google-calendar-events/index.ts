@@ -60,6 +60,15 @@ interface DeleteEventsRequest {
   routineId?: string;
 }
 
+interface CompletionStatusRequest {
+  eventId: string;
+}
+
+// Constants for completion status
+const COMPLETION_EMOJI = '✅ ';
+const COMPLETED_COLOR_ID = '10';  // Green/Basil
+const DEFAULT_COLOR_ID = '9';     // Blue (default for fitness events)
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -305,6 +314,66 @@ async function deleteGoogleCalendarEvent(
     console.error('Failed to delete calendar event:', errorData);
     throw new Error(`Failed to delete calendar event: ${response.status}`);
   }
+}
+
+async function getGoogleCalendarEvent(
+  accessToken: string,
+  eventId: string
+): Promise<CalendarEvent | null> {
+  const response = await fetch(
+    `${GOOGLE_CALENDAR_API}/calendars/primary/events/${eventId}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+    const errorData = await response.text();
+    console.error('Failed to get calendar event:', errorData);
+    throw new Error(`Failed to get calendar event: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+// ============================================================================
+// Completion Status Helper Functions (Requirements 7.1, 7.2, 7.3, 7.4)
+// ============================================================================
+
+/**
+ * Adds completion marker to event title
+ * Requirements: 7.1
+ */
+export function addCompletionMarker(summary: string): string {
+  // Don't add if already has completion marker
+  if (summary.startsWith(COMPLETION_EMOJI)) {
+    return summary;
+  }
+  return `${COMPLETION_EMOJI}${summary}`;
+}
+
+/**
+ * Removes completion marker from event title
+ * Requirements: 7.3
+ */
+export function removeCompletionMarker(summary: string): string {
+  if (summary.startsWith(COMPLETION_EMOJI)) {
+    return summary.slice(COMPLETION_EMOJI.length);
+  }
+  return summary;
+}
+
+/**
+ * Checks if event title has completion marker
+ */
+export function hasCompletionMarker(summary: string): boolean {
+  return summary.startsWith(COMPLETION_EMOJI);
 }
 
 // ============================================================================
@@ -693,6 +762,140 @@ async function handleDeleteEvents(
   }
 }
 
+/**
+ * PATCH /events/:id/complete - Mark event as completed
+ * Requirements: 7.1, 7.2
+ * Adds ✅ prefix to title and changes color to green (colorId: 10)
+ */
+async function handleMarkEventComplete(
+  userId: string,
+  eventId: string
+): Promise<Response> {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    // Verify the event belongs to this user
+    const { data: mapping, error: mappingError } = await supabase
+      .from('calendar_event_mappings')
+      .select('id')
+      .eq('google_event_id', eventId)
+      .eq('user_id', userId)
+      .single();
+
+    if (mappingError || !mapping) {
+      return new Response(
+        JSON.stringify({ error: 'Event not found or access denied' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get valid access token
+    const accessToken = await getValidAccessToken(userId);
+
+    // Get current event from Google Calendar
+    const currentEvent = await getGoogleCalendarEvent(accessToken, eventId);
+    if (!currentEvent) {
+      return new Response(
+        JSON.stringify({ error: 'Event not found in Google Calendar' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Add completion marker to title and change color to green
+    const updatedEvent: Partial<CalendarEvent> = {
+      summary: addCompletionMarker(currentEvent.summary || ''),
+      colorId: COMPLETED_COLOR_ID,
+    };
+
+    // Update event in Google Calendar
+    await updateGoogleCalendarEvent(accessToken, eventId, updatedEvent as CalendarEvent);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        eventId,
+        summary: updatedEvent.summary,
+        colorId: updatedEvent.colorId,
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error marking event complete:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * PATCH /events/:id/incomplete - Mark event as incomplete
+ * Requirements: 7.3, 7.4
+ * Removes ✅ prefix from title and restores default color (colorId: 9)
+ */
+async function handleMarkEventIncomplete(
+  userId: string,
+  eventId: string
+): Promise<Response> {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    // Verify the event belongs to this user
+    const { data: mapping, error: mappingError } = await supabase
+      .from('calendar_event_mappings')
+      .select('id')
+      .eq('google_event_id', eventId)
+      .eq('user_id', userId)
+      .single();
+
+    if (mappingError || !mapping) {
+      return new Response(
+        JSON.stringify({ error: 'Event not found or access denied' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get valid access token
+    const accessToken = await getValidAccessToken(userId);
+
+    // Get current event from Google Calendar
+    const currentEvent = await getGoogleCalendarEvent(accessToken, eventId);
+    if (!currentEvent) {
+      return new Response(
+        JSON.stringify({ error: 'Event not found in Google Calendar' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Remove completion marker from title and restore default color
+    const updatedEvent: Partial<CalendarEvent> = {
+      summary: removeCompletionMarker(currentEvent.summary || ''),
+      colorId: DEFAULT_COLOR_ID,
+    };
+
+    // Update event in Google Calendar
+    await updateGoogleCalendarEvent(accessToken, eventId, updatedEvent as CalendarEvent);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        eventId,
+        summary: updatedEvent.summary,
+        colorId: updatedEvent.colorId,
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error marking event incomplete:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
 // ============================================================================
 // Main Request Handler
 // ============================================================================
@@ -734,8 +937,30 @@ serve(async (req: Request) => {
       return handleCreateEvents(userId, body as CreateEventsRequest);
     }
 
+    // Route: PATCH /events/:id/complete - Mark event as completed
+    // Requirements: 7.1, 7.2
+    if (req.method === 'PATCH' && lastPart === 'complete' && pathParts.includes('events')) {
+      // Path format: /events/:id/complete
+      const eventsIndex = pathParts.indexOf('events');
+      const eventId = pathParts[eventsIndex + 1];
+      if (eventId && eventId !== 'complete') {
+        return handleMarkEventComplete(userId, eventId);
+      }
+    }
+
+    // Route: PATCH /events/:id/incomplete - Mark event as incomplete
+    // Requirements: 7.3, 7.4
+    if (req.method === 'PATCH' && lastPart === 'incomplete' && pathParts.includes('events')) {
+      // Path format: /events/:id/incomplete
+      const eventsIndex = pathParts.indexOf('events');
+      const eventId = pathParts[eventsIndex + 1];
+      if (eventId && eventId !== 'incomplete') {
+        return handleMarkEventIncomplete(userId, eventId);
+      }
+    }
+
     // Route: PATCH /events/:id - Update event
-    if (req.method === 'PATCH' && pathParts.includes('events')) {
+    if (req.method === 'PATCH' && pathParts.includes('events') && lastPart !== 'complete' && lastPart !== 'incomplete') {
       const eventId = lastPart;
       return handleUpdateEvent(userId, { ...body, eventId } as UpdateEventRequest);
     }

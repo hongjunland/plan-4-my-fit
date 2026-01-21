@@ -40,6 +40,22 @@ export interface SyncResult {
   errors?: string[];
 }
 
+export interface EventMapping {
+  id: string;
+  userId: string;
+  routineId: string;
+  workoutId: string;
+  googleEventId: string;
+  eventDate: string;
+}
+
+export interface CompletionStatusResult {
+  success: boolean;
+  eventId: string;
+  summary?: string;
+  colorId?: string;
+}
+
 export interface CreateEventsOptions {
   routineId: string;
   startDate: string; // ISO date string (YYYY-MM-DD)
@@ -400,6 +416,124 @@ export async function syncAllRoutines(): Promise<SyncResult> {
 }
 
 // ============================================================================
+// Completion Status Functions (Requirements 7.1, 7.3)
+// ============================================================================
+
+/**
+ * Mark a calendar event as completed
+ * Adds ✅ prefix to title and changes color to green
+ * Requirement 7.1: 완료 체크 시 캘린더 이벤트 업데이트
+ */
+export async function markEventCompleted(eventId: string): Promise<CompletionStatusResult> {
+  logger.debug('Marking calendar event as completed', { eventId });
+  
+  const response = await callEdgeFunction<{
+    success: boolean;
+    eventId: string;
+    summary: string;
+    colorId: string;
+  }>(
+    `${EVENTS_FUNCTION_PATH}/events/${eventId}/complete`,
+    'PATCH'
+  );
+  
+  logger.info('Calendar event marked as completed', { 
+    eventId,
+    summary: response.summary 
+  });
+  
+  return {
+    success: response.success,
+    eventId: response.eventId,
+    summary: response.summary,
+    colorId: response.colorId,
+  };
+}
+
+/**
+ * Mark a calendar event as incomplete
+ * Removes ✅ prefix from title and restores default color
+ * Requirement 7.3: 완료 해제 시 캘린더 이벤트 복원
+ */
+export async function markEventIncomplete(eventId: string): Promise<CompletionStatusResult> {
+  logger.debug('Marking calendar event as incomplete', { eventId });
+  
+  const response = await callEdgeFunction<{
+    success: boolean;
+    eventId: string;
+    summary: string;
+    colorId: string;
+  }>(
+    `${EVENTS_FUNCTION_PATH}/events/${eventId}/incomplete`,
+    'PATCH'
+  );
+  
+  logger.info('Calendar event marked as incomplete', { 
+    eventId,
+    summary: response.summary 
+  });
+  
+  return {
+    success: response.success,
+    eventId: response.eventId,
+    summary: response.summary,
+    colorId: response.colorId,
+  };
+}
+
+// ============================================================================
+// Event Mapping Functions (Requirement 7.5)
+// ============================================================================
+
+/**
+ * Get the event mapping for a specific workout on a specific date
+ * Requirement 7.5: 앱의 운동과 캘린더 이벤트 매핑 조회
+ */
+export async function getEventMapping(
+  routineId: string,
+  workoutId: string,
+  date: string
+): Promise<EventMapping | null> {
+  logger.debug('Getting event mapping', { routineId, workoutId, date });
+  
+  try {
+    const { data, error } = await supabase
+      .from('calendar_event_mappings')
+      .select('id, user_id, routine_id, workout_id, google_event_id, event_date')
+      .eq('routine_id', routineId)
+      .eq('workout_id', workoutId)
+      .eq('event_date', date)
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows returned - not an error, just no mapping exists
+        logger.debug('No event mapping found', { routineId, workoutId, date });
+        return null;
+      }
+      throw error;
+    }
+    
+    logger.debug('Event mapping found', { 
+      googleEventId: data.google_event_id 
+    });
+    
+    return {
+      id: data.id,
+      userId: data.user_id,
+      routineId: data.routine_id,
+      workoutId: data.workout_id,
+      googleEventId: data.google_event_id,
+      eventDate: data.event_date,
+    };
+  } catch (error) {
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    logger.error('Failed to get event mapping', errorObj);
+    return null;
+  }
+}
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -440,6 +574,13 @@ export const googleCalendarService = {
   // Sync
   syncRoutine,
   syncAllRoutines,
+  
+  // Completion Status (Requirements 7.1, 7.3)
+  markEventCompleted,
+  markEventIncomplete,
+  
+  // Event Mapping (Requirement 7.5)
+  getEventMapping,
 };
 
 export default googleCalendarService;
